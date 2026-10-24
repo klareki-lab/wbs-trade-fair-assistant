@@ -116,3 +116,25 @@ branch identity and `neondb_owner` role-creation capability before DDL.
    and optional AAAA after external IPv6 checks. Execute the F3B
    holding-vhost and rollback sequence with live acceptance; no
    production GO follows from this offline review alone.
+
+## 5. Deliverable summary (dispatch verdict grid)
+
+Scope: PR #9 at `45e0d741e2d7bc25f3cce23e419a1ef4f5c78734`, exercised
+against the isolated PostgreSQL 16 container of §2.
+
+| Item | Verdict |
+| --- | --- |
+| Atomicity | **PASS** — function-creation failure and privilege-assertion failure each left role=0, function=0; one `COMMIT` per migration. |
+| Function privileges | **PASS** — owner `neondb_owner`, `prosecdef=t`, `provolatile=s`, `search_path` pinned, PUBLIC EXECUTE=false, `trade_fair_dashboard` EXECUTE=true, no direct table SELECT, no access to other `trade_fair` functions, existing WF-A–D role grants unchanged in catalog comparison. |
+| Rollback | **PASS** — clean install→rollback leaves role=0, function=0; induced dependency failure leaves role=1, function=1 (existing objects preserved); cleanup after removing the dependency succeeds. |
+| Migration portability | **PASS** — `psql -f` executed from `/tmp` with absolute path and from repo root both succeed; `\ir` resolves the shared function definition relative to the migration file. |
+| Release integration | **PASS** — PR #9 can be incorporated on top of PR #8 without losing PR #8 files (function body is byte-identical, extracted into `sql/dashboard_snapshot_definition.sql` and referenced via `\ir`); runtime PR #1 → #2 → #3 ancestry verified by `merge-base --is-ancestor`; the eventual production migration must use PR #9's SQL. |
+| Regression tests | **PASS** — Gateway `npm test` 40/40; `git diff --check` clean; no WF-A–D workflow export altered. |
+| PR #9 | **APPROVE** — ready to incorporate into the WBS-TF-07 packet. The original PR #8 migration must never be run. |
+| WBS-TF-07 | **PREPARATION ACCEPTED** for the SQL correction; **BLOCKED** on production execution until Owner confirms Neon production branch identity (ID, endpoint, `neondb_owner` `CREATEROLE`) out of band. |
+| Production execution | **NO-GO** — hard STOP on Neon branch identity verification, Owner approval for the PR #1 → #2 → #3 chain, F3B holding-vhost sequence and live acceptance. Reclassifies to **CONDITIONAL GO** only after those gates close. |
+
+No production or completed Neon staging DDL, DNS, nginx, TLS, Gateway,
+workflow, merge or deployment change was performed to produce this
+summary. Only PR #9's branch and the isolated container results of §2
+were used.
