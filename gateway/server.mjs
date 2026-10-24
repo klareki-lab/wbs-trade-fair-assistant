@@ -3,6 +3,9 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+// WBS-TF-02 DASHBOARD
+import { createDashboardDb } from './dashboard-db.mjs';
+import { parseDashboardQuery } from './dashboard-api.mjs';
 
 const WEB_ROOT = fileURLToPath(new URL('../web/', import.meta.url));
 const MAX_BODY = 32 * 1024;
@@ -52,11 +55,21 @@ export function loadConfig(env = process.env) {
     return value.href;
   };
   const secureCookies = originUrl.protocol === 'https:';
+  // WBS-TF-02 DASHBOARD: optional, fail-closed. Disabled by default.
+  if (env.DASHBOARD_ENABLED && !['true', 'false'].includes(env.DASHBOARD_ENABLED)) {
+    throw new Error('DASHBOARD_ENABLED must be true or false.');
+  }
+  const dashboardEnabled = env.DASHBOARD_ENABLED === 'true';
+  const dashboardDatabaseUrl = dashboardEnabled ? (env.DASHBOARD_DATABASE_URL || '') : null;
+  if (dashboardEnabled && !/^postgres(?:ql)?:\/\//.test(dashboardDatabaseUrl)) {
+    throw new Error('DASHBOARD_DATABASE_URL is required when DASHBOARD_ENABLED=true.');
+  }
   return {
     host: env.HOST || '127.0.0.1', port, origin: originUrl.origin,
     accessKey, sessionSecret, headerKey,
     captureUrl: readUrl('N8N_CAPTURE_URL'), statusUrl: readUrl('N8N_STATUS_URL'),
     publicEnabled: env.PUBLIC_FORM_ENABLED === 'true', secureCookies,
+    dashboardEnabled, dashboardDatabaseUrl,
     upstreamTimeoutMs: 20000,
     limits: {
       login: { count: 8, windowMs: 15 * 60 * 1000 },
@@ -213,7 +226,10 @@ async function readUpstreamJson(response) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
-export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date.now } = {}) {
+export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date.now, dashboardStore = null } = {}) {
+  const dashboard = config.dashboardEnabled
+    ? (dashboardStore || createDashboardDb({ connectionString: config.dashboardDatabaseUrl }))
+    : null;
   const rateBuckets = new Map();
   const globalBuckets = new Map(); // Two fixed buckets cannot be evicted by new IPs.
   const applyRate = (req, res, kind) => {
@@ -344,6 +360,30 @@ export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date
         } catch { failure(res, 503, 'STATUS_UNAVAILABLE', { retryable: true, persistence: 'unknown' }); }
         return;
       }
+      // WBS-TF-02 DASHBOARD: existing Gateway session and rate limiter protect every read.
+      // When disabled, these paths fall through to the generic 404 handler below.
+      if (config.dashboardEnabled && route === '/api/dashboard') {
+        if (req.method !== 'GET') { req.resume(); failure(res, 405, 'REQUEST_REJECTED'); return; }
+        if (!requireSession(req, res) || !applyRate(req, res, 'status')) return;
+        let opts;
+        try { opts = parseDashboardQuery(url.searchParams); }
+        catch { failure(res, 400, 'INVALID_JSON'); return; }
+        try { sendJson(res, 200, await dashboard.query(opts)); }
+        catch { failure(res, 503, 'STATUS_UNAVAILABLE', { retryable: true, persistence: 'unknown' }); }
+        return;
+      }
+      if (config.dashboardEnabled && ['/dashboard', '/dashboard.js', '/dashboard.css'].includes(route)) {
+        if (!['GET', 'HEAD'].includes(req.method)) { req.resume(); failure(res, 405, 'REQUEST_REJECTED'); return; }
+        if (!requireSession(req, res)) return;
+        const filename = route === '/dashboard' ? 'Messe-Admin-Hub.html'
+          : route === '/dashboard.js' ? 'dashboard.js' : 'dashboard.css';
+        const type = route === '/dashboard' ? 'text/html; charset=utf-8'
+          : route === '/dashboard.js' ? 'text/javascript; charset=utf-8' : 'text/css; charset=utf-8';
+        const content = await readFile(path.join(WEB_ROOT, filename));
+        res.writeHead(200, { 'Content-Type': type, 'Content-Length': content.length });
+        res.end(req.method === 'HEAD' ? undefined : content);
+        return;
+      }
       const staticRoutes = new Map([
         ['/', ['index.html', 'text/html; charset=utf-8']],
         ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
@@ -361,6 +401,9 @@ export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date
       req.resume();
       if (['/api/login', '/api/logout', '/api/leads', '/api/public/leads'].includes(route)) {
         failure(res, route === '/api/public/leads' && !config.publicEnabled ? 404 : 405, 'REQUEST_REJECTED'); return;
+      }
+      if (config.dashboardEnabled && route === '/api/dashboard') {
+        failure(res, 405, 'REQUEST_REJECTED'); return;
       }
       failure(res, 404, 'NOT_FOUND');
     } catch (error) {
