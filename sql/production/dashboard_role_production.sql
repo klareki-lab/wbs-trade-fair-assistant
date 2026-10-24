@@ -6,8 +6,8 @@
 --
 -- Executed as neondb_owner on the production Neon branch. Password is
 -- read from the process environment variable WBS_DASHBOARD_PROD_ROLE_PASSWORD
--- and never echoed to stdout. Function install, revocations and grant
--- happen in a single transaction and are atomic.
+-- and never echoed to stdout. Role creation, function install, ACLs
+-- and assertions run in one transaction; any failure rolls all back.
 \set ON_ERROR_STOP on
 
 \if :{?production_branch_confirmed}
@@ -24,12 +24,21 @@
 \else
   DO $deny$ BEGIN RAISE EXCEPTION 'Refusing production migration: set WBS_DASHBOARD_PROD_ROLE_PASSWORD in the process environment'; END $deny$;
 \endif
+SELECT length(:'dashboard_password') >= 24 AS dashboard_password_ok \gset
+\if :dashboard_password_ok
+\else
+  DO $deny$ BEGIN RAISE EXCEPTION 'Refusing production migration: dashboard password is too short'; END $deny$;
+\endif
 
 -- Early sanity checks: schema must exist and be owned by neondb_owner,
 -- and the role must not already exist (replays after rollback are a
 -- separate operation).
+BEGIN;
 DO $pre$
 BEGIN
+  IF current_database() <> 'neondb' OR current_user <> 'neondb_owner' THEN
+    RAISE EXCEPTION 'expected neondb as neondb_owner';
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'trade_fair') THEN
     RAISE EXCEPTION 'trade_fair schema missing on this branch';
   END IF;
@@ -46,27 +55,20 @@ BEGIN
 END
 $pre$;
 
-BEGIN;
-
 CREATE ROLE trade_fair_dashboard LOGIN PASSWORD :'dashboard_password'
   NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOINHERIT;
 
 GRANT CONNECT ON DATABASE neondb TO trade_fair_dashboard;
 
--- The function body is identical to sql/dashboard_snapshot.sql; this
--- migration keeps the role and the function in the same transaction so
--- partial state is impossible.
-\i sql/dashboard_snapshot.sql
+-- Resolve from this script's directory, independent of the caller's cwd.
+-- The shared definition has no BEGIN/COMMIT or grants.
+\ir ../dashboard_snapshot_definition.sql
+REVOKE ALL ON FUNCTION trade_fair.dashboard_snapshot(integer,integer,text,text,text,text,text,text,text) FROM PUBLIC;
+GRANT USAGE ON SCHEMA trade_fair TO trade_fair_dashboard;
+GRANT EXECUTE ON FUNCTION trade_fair.dashboard_snapshot(integer,integer,text,text,text,text,text,text,text) TO trade_fair_dashboard;
 
--- dashboard_snapshot.sql opens and commits its own BEGIN block. If this
--- fails on a particular psql version, replace the \i with an inline copy
--- of the function body wrapped in CREATE FUNCTION ... REVOKE ... GRANT.
--- No change in semantics either way.
-
-COMMIT;
-
--- Post-install assertions (own transaction, read-only).
-BEGIN READ ONLY;
+-- Verify privileges BEFORE commit so an assertion failure rolls back
+-- role creation, function creation, revocation and grants together.
 DO $post$
 DECLARE r RECORD;
 BEGIN
@@ -80,6 +82,21 @@ BEGIN
   IF r.prosecdef IS NOT TRUE THEN RAISE EXCEPTION 'function not SECURITY DEFINER'; END IF;
   IF r.provolatile <> 's' THEN RAISE EXCEPTION 'function not STABLE'; END IF;
   IF r.owner <> 'neondb_owner' THEN RAISE EXCEPTION 'function owner is %, expected neondb_owner', r.owner; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc
+    WHERE pronamespace='trade_fair'::regnamespace
+      AND proname='dashboard_snapshot'
+      AND proconfig @> ARRAY['search_path=pg_catalog, trade_fair, pg_temp']
+  ) THEN RAISE EXCEPTION 'function search_path is not pinned'; END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_roles WHERE rolname='trade_fair_dashboard'
+      AND rolcanlogin AND NOT rolsuper AND NOT rolcreatedb
+      AND NOT rolcreaterole AND NOT rolreplication AND NOT rolinherit
+  ) THEN RAISE EXCEPTION 'dashboard role attributes do not match policy'; END IF;
+  IF NOT has_database_privilege('trade_fair_dashboard',current_database(),'CONNECT') THEN
+    RAISE EXCEPTION 'dashboard role missing CONNECT';
+  END IF;
 
   IF has_function_privilege('public',
        'trade_fair.dashboard_snapshot(integer,integer,text,text,text,text,text,text,text)','EXECUTE') THEN
@@ -115,4 +132,4 @@ BEGIN
   END IF;
 END
 $post$;
-ROLLBACK;
+COMMIT;

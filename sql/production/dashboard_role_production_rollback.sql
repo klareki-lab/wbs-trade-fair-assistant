@@ -20,14 +20,28 @@
 \endif
 
 BEGIN;
+DO $pre$
+BEGIN
+  IF current_database() <> 'neondb' OR current_user <> 'neondb_owner' THEN
+    RAISE EXCEPTION 'expected neondb as neondb_owner';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='trade_fair_dashboard') THEN
+    RAISE EXCEPTION 'trade_fair_dashboard role missing; audit before rollback';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname='trade_fair' AND p.proname='dashboard_snapshot'
+      AND p.proowner='neondb_owner'::regrole
+  ) THEN
+    RAISE EXCEPTION 'expected neondb_owner dashboard_snapshot missing; audit before rollback';
+  END IF;
+END
+$pre$;
 DROP FUNCTION IF EXISTS trade_fair.dashboard_snapshot(integer,integer,text,text,text,text,text,text,text);
 REVOKE USAGE ON SCHEMA trade_fair FROM trade_fair_dashboard;
 REVOKE CONNECT ON DATABASE neondb FROM trade_fair_dashboard;
 DROP ROLE IF EXISTS trade_fair_dashboard;
-COMMIT;
-
--- Post-rollback assertion.
-BEGIN READ ONLY;
+-- Verify removal before commit; any assertion failure rolls back.
 DO $post$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='trade_fair_dashboard') THEN
@@ -39,4 +53,4 @@ BEGIN
   END IF;
 END
 $post$;
-ROLLBACK;
+COMMIT;

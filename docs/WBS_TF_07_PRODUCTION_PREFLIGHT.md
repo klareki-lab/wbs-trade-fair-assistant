@@ -78,18 +78,21 @@ reviewed owner migration — not the staging-only
   the process environment `WBS_DASHBOARD_PROD_ROLE_PASSWORD`. Early
   sanity checks assert that `trade_fair` exists, is owned by
   `neondb_owner`, and that neither the role nor the function already
-  exists. Role + function + grants install in **one transaction**.
-  Reviewed-copy of `sql/dashboard_snapshot.sql` is included via `\i`.
-  After commit, a read-only `BEGIN READ ONLY` block asserts:
+  exists. Role, function, grants and assertions run in **one transaction**.
+  The shared function body is included from
+  `sql/dashboard_snapshot_definition.sql` via `\ir`, resolved relative
+  to the migration file. Before commit, the transaction asserts:
   - `prosecdef=true`, `provolatile='s'`, `proowner=neondb_owner`,
   - no `PUBLIC` EXECUTE on the function,
   - `trade_fair_dashboard` has `EXECUTE` on it,
   - `trade_fair_dashboard` has `USAGE` and lacks `CREATE` on the schema,
+  - a pinned `search_path`, exact role flags and database `CONNECT`,
   - no direct table privileges, no `EXECUTE` on any other
     `trade_fair.*` function.
 - **`sql/production/dashboard_role_production_rollback.sql`.** Same
-  guard. `DROP FUNCTION`, `REVOKE USAGE/CONNECT`, `DROP ROLE`, then a
-  read-only block that asserts both are gone.
+  guard. Checks the owner, role and function, then `DROP FUNCTION`,
+  `REVOKE USAGE/CONNECT` and `DROP ROLE`. It asserts both are gone
+  before commit; a dependency error rolls the removal back.
 
 Both scripts refuse to run without the explicit guard variable, so
 accidental execution against staging (which uses
@@ -115,14 +118,17 @@ staging confirmation is required before running the migration:
    SELECT current_database(), current_user, inet_server_addr();
    SELECT setting FROM pg_settings WHERE name='neon.timeline_id';
    SELECT nspowner::regrole::text FROM pg_namespace WHERE nspname='trade_fair';
+   SELECT rolcreaterole FROM pg_roles WHERE rolname=current_user;
    SELECT count(*) FROM pg_proc p
      JOIN pg_namespace n ON n.oid=p.pronamespace
      WHERE n.nspname='trade_fair' AND p.proname='dashboard_snapshot';
    ```
    Confirm `current_user=neondb_owner`, `current_database=neondb`,
-   schema owner `neondb_owner`, function count `0`, and that the
+   schema owner `neondb_owner`, `rolcreaterole=true`, function count
+   `0`, and that the
    `neon.timeline_id` is **not** `a171e976ae189ef43d7ca803d826354e`
-   (that is the staging timeline). Only then run
+   (that is the staging timeline). Only then, from the repository root,
+   run
    `psql -X -v ON_ERROR_STOP=1 -v production_branch_confirmed=on
     -f sql/production/dashboard_role_production.sql`.
 
@@ -212,10 +218,11 @@ Nothing below is self-approving.
      `ops/nginx/messe.klare-ki.de.conf`,
    - staged HSTS (nothing → `max-age=300` → `max-age=31536000`,
      host-only).
-5. **Private secrets provisioning.** Create
-   `/opt/wbs-trade-fair/secrets/gateway.dashboard.env` (mode 0600,
-   root), run the §6 "Baseline capture" block to populate
-   `/opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/`.
+5. **Private secrets provisioning.** First run F3B §6 "Baseline
+   capture" while the original `gateway.env` is unchanged; verify
+   `env.pre` under `/opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/`.
+   Then create the distinct `gateway.dashboard.env` (mode 0600,
+   root). Do not reverse this order.
 6. **Production image.** Build from the final PR #3 (plus merged PR #1,
    #2) SHA using `Dockerfile.dashboard-staging`; record the content-
    addressed digest in the deployment log.
@@ -313,17 +320,17 @@ Owner must stop and page back to this preflight if any of these hold:
 | Residual stale staging secret files on the VPS (two files, housekeeping) | Delete or rotate during the pre-cutover window. |
 | Documentation PR path | Execute §13 of F3B R3 after PR #1 → #2 → #3 lands. |
 
-None of these is a code or infrastructure defect; each is an
-owner-approved operation already named in the F3B packet or this
-preflight.
+The production Neon identity, TLS certificate and immutable image
+remain execution gates. The SQL transaction defect in the original
+PR #8 migration is corrected in the separate Codex fix branch and
+must be reviewed and integrated before any production DDL.
 
 ## 11. Status
 
 - **F3B PREPARATION:** ACCEPTED (PR #7).
-- **WBS-TF-07 PREFLIGHT:** PASS — all read-only checks reproduce; the
-  production SQL migration + rollback are committed under
-  `sql/production/`.
-- **PRODUCTION EXECUTION — NOT YET AUTHORIZED.** Owner approval for the
-  items in §7 and successful live acceptance per §8 are required to
-  move Gate F3B and PRODUCTION READY to PASS. Codex will review this
-  preflight before any production mutation.
+- **WBS-TF-07 PREFLIGHT:** CHANGES REQUIRED on PR #8. The separate
+  atomic migration fix passed isolated PostgreSQL tests; it is not
+  production-accepted until reviewed and integrated.
+- **PRODUCTION EXECUTION — NOT YET AUTHORIZED.** Independent review of
+  the fix, Owner approval for §7 and successful live acceptance per §8
+  are required before Gate F3B and PRODUCTION READY can pass.

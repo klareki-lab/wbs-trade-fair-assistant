@@ -47,6 +47,9 @@ test('SQL migration and browser carry no write endpoint or embedded credentials'
  const files=await Promise.all(['web/Messe-Admin-Hub.html','web/dashboard.js','web/dashboard.css'].map(f=>readFile(path.join(root,f),'utf8')));
  const txt=files.join('\n');for(const forbidden of ['n8n.poljanzew.app','Basic Auth','n8nUrl','__PASSWORT__','data-chat','/webhook/','Authorization: Basic'])assert(!txt.includes(forbidden),forbidden);
  assert.match(txt,/api\/dashboard/);assert.match(txt,/\/api\/logout/);assert(!/localStorage|sessionStorage/.test(txt));
- const sql=await readFile(path.join(root,'sql/dashboard_snapshot.sql'),'utf8');assert.match(sql,/SECURITY DEFINER/);assert.match(sql,/REVOKE ALL ON FUNCTION/);assert.match(sql,/GRANT EXECUTE ON FUNCTION/);
- assert(!/\b(DELETE FROM|UPDATE trade_fair|INSERT INTO|TRUNCATE)\b/i.test(sql));
+ const sql=await readFile(path.join(root,'sql/dashboard_snapshot.sql'),'utf8');
+ const definition=await readFile(path.join(root,'sql/dashboard_snapshot_definition.sql'),'utf8');
+ assert.match(definition,/SECURITY DEFINER/);assert.match(sql,/REVOKE ALL ON FUNCTION/);assert.match(sql,/GRANT EXECUTE ON FUNCTION/);
+ assert(!/^\s*(BEGIN|COMMIT|ROLLBACK)\s*;/im.test(definition));
+ assert(!/\b(DELETE FROM|UPDATE trade_fair|INSERT INTO|TRUNCATE)\b/i.test(sql+definition));
 });
