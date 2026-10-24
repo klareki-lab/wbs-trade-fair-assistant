@@ -1,0 +1,20 @@
+BEGIN
+         proname         |                                        args                                        | prosecdef |                           proacl                            | app_execute | public_execute
+-------------------------+------------------------------------------------------------------------------------+-----------+-------------------------------------------------------------+-------------+----------------
+ begin_email_send        | p_outbox_id uuid, p_lease_token uuid                                               | t         | {neondb_owner=X/neondb_owner,trade_fair_app=X/neondb_owner} | t           | f
+ capture_lead            | p_payload jsonb                                                                    | f         | {neondb_owner=X/neondb_owner,trade_fair_app=X/neondb_owner} | t           | f
+ claim_email             | p_worker_id text, p_limit integer, p_lease_seconds integer, p_max_attempts integer | t         | {neondb_owner=X/neondb_owner,trade_fair_app=X/neondb_owner} | t           | f
+ claim_processing        | p_worker_id text, p_limit integer, p_lease_seconds integer, p_max_attempts integer | t         | {neondb_owner=X/neondb_owner,trade_fair_app=X/neondb_owner} | t           | f
+ fail_email_send         | p_outbox_id uuid, p_lease_token uuid, p_error_code text, p_outcome text            | t         | {neondb_owner=X/neondb_owner,trade_fair_app=X/neondb_owner} | t           | f
+ fail_processing         | p_lead_id text, p_lease_token uuid, p_error_code text, p_retryable boolean         | t         | {neondb_owner=X/neondb_owner,trade_fair_app=X/neondb_owner} | t           | f
+ finish_email_send       | p_outbox_id uuid, p_lease_token uuid, p_provider_message_id text                   | t         | {neondb_owner=X/neondb_owner,trade_fair_app=X/neondb_owner} | t           | f
+ finish_processing       | p_lead_id text, p_lease_token uuid, p_result jsonb, p_email jsonb                  | t         | {neondb_owner=X/neondb_owner,trade_fair_app=X/neondb_owner} | t           | f
+ get_lead_status         | p_lead_id text, p_submission_id text                                               | t         | {neondb_owner=X/neondb_owner,trade_fair_app=X/neondb_owner} | t           | f
+ queue_health            |                                                                                    | t         | {neondb_owner=X/neondb_owner}                               | f           | f
+ renew_processing        | p_lead_id text, p_lease_token uuid, p_lease_seconds integer                        | t         | {neondb_owner=X/neondb_owner}                               | f           | f
+ resolve_email_uncertain | p_outbox_id uuid, p_action text, p_operator_note text                              | t         | {neondb_owner=X/neondb_owner}                               | f           | f
+ retry_failed_email      | p_outbox_id uuid, p_operator_note text                                             | t         | {neondb_owner=X/neondb_owner}                               | f           | f
+ retry_failed_processing | p_lead_id text, p_operator_note text                                               | t         | {neondb_owner=X/neondb_owner}                               | f           | f
+(14 rows)
+
+ROLLBACK

@@ -1,12 +1,7 @@
 -- OPTIONAL REVIEWED MIGRATION: DO NOT EXECUTE ON PRODUCTION WITHOUT NEON DDL/ACL REVIEW.
--- Installs one SECURITY DEFINER read-only function, grants EXECUTE only to a named
--- existing role, does not modify data, create roles/tables or grant SELECT on tables.
+-- Installs one SECURITY DEFINER read-only function, grants EXECUTE only to the
+-- dedicated existing role, does not modify data, create roles/tables or grant SELECT.
 \set ON_ERROR_STOP on
-\if :{?dashboard_role}
-\else
-\echo 'Refusing deployment: supply -v dashboard_role=EXISTING_APPROVED_ROLE'
-DO $deny$ BEGIN RAISE EXCEPTION 'Missing approved dashboard_role'; END $deny$;
-\endif
 BEGIN;
 CREATE FUNCTION trade_fair.dashboard_snapshot(
   p_limit integer,p_offset integer,p_search text,p_band text,p_processing text,
@@ -16,8 +11,8 @@ SET search_path = pg_catalog, trade_fair, pg_temp
 AS $fn$
 WITH allowed AS (
  SELECT
-  LEAST(GREATEST(p_limit,1),100) AS n,
-  LEAST(GREATEST(p_offset,0),1000000) AS skip,
+  LEAST(GREATEST(COALESCE(p_limit,50),1),100) AS n,
+  LEAST(GREATEST(COALESCE(p_offset,0),0),1000000) AS skip,
   LEFT(COALESCE(p_search,''),120) AS q,
   COALESCE(p_band,'') AS band,
   COALESCE(p_processing,'') AS process,
@@ -111,6 +106,6 @@ SELECT jsonb_build_object(
 );
 $fn$;
 REVOKE ALL ON FUNCTION trade_fair.dashboard_snapshot(integer,integer,text,text,text,text,text,text,text) FROM PUBLIC;
-GRANT USAGE ON SCHEMA trade_fair TO :"dashboard_role";
-GRANT EXECUTE ON FUNCTION trade_fair.dashboard_snapshot(integer,integer,text,text,text,text,text,text,text) TO :"dashboard_role";
+GRANT USAGE ON SCHEMA trade_fair TO trade_fair_dashboard;
+GRANT EXECUTE ON FUNCTION trade_fair.dashboard_snapshot(integer,integer,text,text,text,text,text,text,text) TO trade_fair_dashboard;
 COMMIT;

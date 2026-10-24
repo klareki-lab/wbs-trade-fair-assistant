@@ -1,0 +1,10 @@
+FROM node:22-alpine
+ENV NODE_ENV=production
+WORKDIR /app/gateway
+COPY gateway/package.json gateway/package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+COPY gateway/*.mjs ./
+COPY web/ /app/web/
+USER node
+EXPOSE 3000
+CMD ["node", "server.mjs"]

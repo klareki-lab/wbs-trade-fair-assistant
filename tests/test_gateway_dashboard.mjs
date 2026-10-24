@@ -5,6 +5,7 @@ import {createGateway,loadConfig} from '../gateway/server.mjs';
 const ENV={
  HOST:'127.0.0.1',PORT:'3000',APP_ORIGIN:'http://app.test',
  TRADE_FAIR_ACCESS_KEY:'fake-access-key-for-dashboard-tests',
+ DASHBOARD_ACCESS_KEY:'separate-admin-key-for-dashboard-tests',
  SESSION_SECRET:'fake-session-secret-for-dashboard-tests-32-chars',
  N8N_HEADER_KEY:'fake-n8n-key',N8N_CAPTURE_URL:'http://upstream.test/capture',
  N8N_STATUS_URL:'http://upstream.test/status',
@@ -21,8 +22,8 @@ async function start(store={query:async()=>DB}){
  const close=async()=>{server.closeAllConnections();await new Promise(resolve=>server.close(resolve))};
  return {address,close};
 }
-async function signIn(address){
- const r=await fetch(address+'/api/login',{method:'POST',headers:{Origin:'http://app.test','Content-Type':'application/json'},body:JSON.stringify({access_key:ENV.TRADE_FAIR_ACCESS_KEY})});
+async function signIn(address,key=ENV.DASHBOARD_ACCESS_KEY){
+ const r=await fetch(address+'/api/login',{method:'POST',headers:{Origin:'http://app.test','Content-Type':'application/json'},body:JSON.stringify({access_key:key})});
  assert.equal(r.status,200);return r.headers.get('set-cookie').split(';')[0];
 }
 test('public route disabled by default with no effect on existing form',async()=>{
@@ -37,6 +38,15 @@ test('unauthenticated dashboard read and assets rejected, original form unchange
   for(const url of ['/api/dashboard','/dashboard','/dashboard.js','/dashboard.css'])assert.equal((await fetch(address+url)).status,401,url);
   assert.equal((await fetch(address+'/')).status,200);
   assert.equal((await fetch(address+'/app.js')).status,200);
+ }finally{await close()}
+});
+test('form access key cannot read dashboard data or assets',async()=>{
+ const {address,close}=await start();try{
+  const cookie=await signIn(address,ENV.TRADE_FAIR_ACCESS_KEY);
+  for(const url of ['/api/dashboard','/dashboard','/dashboard.js','/dashboard.css'])
+   assert.equal((await fetch(address+url,{headers:{Cookie:cookie}})).status,401,url);
+  const session=await (await fetch(address+'/api/session',{headers:{Cookie:cookie}})).json();
+  assert.equal(session.authenticated,true);assert.equal(session.dashboard_authenticated,false);
  }finally{await close()}
 });
 test('authenticated dashboard returns WARM 45, delivered, strict same-origin assets',async()=>{
@@ -57,5 +67,7 @@ test('backend errors return retryable 503, not empty statistics or 200',async()=
 });
 test('dashboard config fails closed',()=>{
  assert.throws(()=>loadConfig({...ENV,DASHBOARD_DATABASE_URL:''}),/DASHBOARD_DATABASE_URL/);
+ assert.throws(()=>loadConfig({...ENV,DASHBOARD_ACCESS_KEY:''}),/DASHBOARD_ACCESS_KEY/);
+ assert.throws(()=>loadConfig({...ENV,DASHBOARD_ACCESS_KEY:ENV.TRADE_FAIR_ACCESS_KEY}),/DASHBOARD_ACCESS_KEY/);
  assert.throws(()=>loadConfig({...ENV,DASHBOARD_ENABLED:'yes'}),/DASHBOARD_ENABLED/);
 });

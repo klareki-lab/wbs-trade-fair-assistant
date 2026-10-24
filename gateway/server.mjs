@@ -61,15 +61,19 @@ export function loadConfig(env = process.env) {
   }
   const dashboardEnabled = env.DASHBOARD_ENABLED === 'true';
   const dashboardDatabaseUrl = dashboardEnabled ? (env.DASHBOARD_DATABASE_URL || '') : null;
+  const dashboardAccessKey = dashboardEnabled ? (env.DASHBOARD_ACCESS_KEY || '') : null;
   if (dashboardEnabled && !/^postgres(?:ql)?:\/\//.test(dashboardDatabaseUrl)) {
     throw new Error('DASHBOARD_DATABASE_URL is required when DASHBOARD_ENABLED=true.');
+  }
+  if (dashboardEnabled && (dashboardAccessKey.length < 16 || constantTimeTextEqual(dashboardAccessKey, accessKey))) {
+    throw new Error('DASHBOARD_ACCESS_KEY must be distinct from TRADE_FAIR_ACCESS_KEY and at least 16 characters.');
   }
   return {
     host: env.HOST || '127.0.0.1', port, origin: originUrl.origin,
     accessKey, sessionSecret, headerKey,
     captureUrl: readUrl('N8N_CAPTURE_URL'), statusUrl: readUrl('N8N_STATUS_URL'),
     publicEnabled: env.PUBLIC_FORM_ENABLED === 'true', secureCookies,
-    dashboardEnabled, dashboardDatabaseUrl,
+    dashboardEnabled, dashboardDatabaseUrl, dashboardAccessKey,
     upstreamTimeoutMs: 20000,
     limits: {
       login: { count: 8, windowMs: 15 * 60 * 1000 },
@@ -152,28 +156,31 @@ function constantTimeTextEqual(left, right) {
   return timingSafeEqual(a, b);
 }
 
-function signSession(config, now) {
+function signSession(config, now, scope = 'form') {
   const issued = Math.floor(now() / 1000);
-  const payload = Buffer.from(JSON.stringify({ v: 1, iat: issued, exp: issued + SESSION_SECONDS, nonce: randomBytes(16).toString('hex') })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ v: 1, iat: issued, exp: issued + SESSION_SECONDS, scope, nonce: randomBytes(16).toString('hex') })).toString('base64url');
   const signature = createHmac('sha256', config.sessionSecret).update(payload).digest('base64url');
   return `${payload}.${signature}`;
 }
 
-function validSession(req, config, now) {
+function readSession(req, config, now) {
   const cookies = String(req.headers.cookie || '').split(';');
   const value = cookies.find((part) => part.trim().startsWith('trade_fair_session='))?.trim().slice('trade_fair_session='.length);
-  if (!value || value.length > 2048) return false;
+  if (!value || value.length > 2048) return null;
   const parts = value.split('.');
-  if (parts.length !== 2 || !parts.every((part) => /^[A-Za-z0-9_-]+$/.test(part))) return false;
+  if (parts.length !== 2 || !parts.every((part) => /^[A-Za-z0-9_-]+$/.test(part))) return null;
   const signature = createHmac('sha256', config.sessionSecret).update(parts[0]).digest('base64url');
-  if (!constantTimeTextEqual(parts[1], signature)) return false;
+  if (!constantTimeTextEqual(parts[1], signature)) return null;
   try {
     const data = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
     const current = Math.floor(now() / 1000);
     return data.v === 1 && Number.isInteger(data.iat) && Number.isInteger(data.exp) &&
-      data.iat <= current + 30 && data.exp > current && data.exp - data.iat === SESSION_SECONDS;
-  } catch { return false; }
+      data.iat <= current + 30 && data.exp > current && data.exp - data.iat === SESSION_SECONDS &&
+      (data.scope === undefined || data.scope === 'form' || data.scope === 'dashboard') ? data : null;
+  } catch { return null; }
 }
+function validSession(req, config, now) { return readSession(req, config, now) !== null; }
+function validDashboardSession(req, config, now) { return readSession(req, config, now)?.scope === 'dashboard'; }
 
 function sessionCookie(token, config, maxAge = SESSION_SECONDS) {
   return `trade_fair_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${config.secureCookies ? '; Secure' : ''}`;
@@ -266,6 +273,10 @@ export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date
     if (validSession(req, config, now)) return true;
     req.resume(); failure(res, 401, 'AUTH_REQUIRED'); return false;
   };
+  const requireDashboardSession = (req, res) => {
+    if (validDashboardSession(req, config, now)) return true;
+    req.resume(); failure(res, 401, 'AUTH_REQUIRED'); return false;
+  };
   const callUpstream = async (url, payload) => {
     const response = await fetchImpl(url, {
       method: 'POST', redirect: 'error',
@@ -323,14 +334,16 @@ export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date
         sendJson(res, 200, { success: true, service: 'trade-fair-gateway' }); return;
       }
       if (req.method === 'GET' && route === '/api/session') {
-        sendJson(res, 200, { success: true, authenticated: validSession(req, config, now), public_form_enabled: config.publicEnabled }); return;
+        sendJson(res, 200, { success: true, authenticated: validSession(req, config, now), dashboard_authenticated: config.dashboardEnabled && validDashboardSession(req, config, now), public_form_enabled: config.publicEnabled }); return;
       }
       if (req.method === 'POST' && route === '/api/login') {
         if (!requireOrigin(req, res) || !applyRate(req, res, 'login')) return;
         const body = await readJson(req);
         const accessKey = typeof body.access_key === 'string' ? body.access_key : '';
-        if (!constantTimeTextEqual(accessKey, config.accessKey)) { failure(res, 401, 'INVALID_ACCESS_KEY'); return; }
-        sendJson(res, 200, { success: true, authenticated: true }, { 'Set-Cookie': sessionCookie(signSession(config, now), config) }); return;
+        const formMatch = constantTimeTextEqual(accessKey, config.accessKey);
+        const dashboardMatch = config.dashboardEnabled && constantTimeTextEqual(accessKey, config.dashboardAccessKey);
+        if (!formMatch && !dashboardMatch) { failure(res, 401, 'INVALID_ACCESS_KEY'); return; }
+        sendJson(res, 200, { success: true, authenticated: true }, { 'Set-Cookie': sessionCookie(signSession(config, now, dashboardMatch ? 'dashboard' : 'form'), config) }); return;
       }
       if (req.method === 'POST' && route === '/api/logout') {
         if (!requireOrigin(req, res)) return;
@@ -360,11 +373,11 @@ export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date
         } catch { failure(res, 503, 'STATUS_UNAVAILABLE', { retryable: true, persistence: 'unknown' }); }
         return;
       }
-      // WBS-TF-02 DASHBOARD: existing Gateway session and rate limiter protect every read.
+      // WBS-TF-04 DASHBOARD: admin-scoped Gateway session and rate limiter protect every read.
       // When disabled, these paths fall through to the generic 404 handler below.
       if (config.dashboardEnabled && route === '/api/dashboard') {
         if (req.method !== 'GET') { req.resume(); failure(res, 405, 'REQUEST_REJECTED'); return; }
-        if (!requireSession(req, res) || !applyRate(req, res, 'status')) return;
+        if (!requireDashboardSession(req, res) || !applyRate(req, res, 'status')) return;
         let opts;
         try { opts = parseDashboardQuery(url.searchParams); }
         catch { failure(res, 400, 'INVALID_JSON'); return; }
@@ -374,7 +387,7 @@ export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date
       }
       if (config.dashboardEnabled && ['/dashboard', '/dashboard.js', '/dashboard.css'].includes(route)) {
         if (!['GET', 'HEAD'].includes(req.method)) { req.resume(); failure(res, 405, 'REQUEST_REJECTED'); return; }
-        if (!requireSession(req, res)) return;
+        if (!requireDashboardSession(req, res)) return;
         const filename = route === '/dashboard' ? 'Messe-Admin-Hub.html'
           : route === '/dashboard.js' ? 'dashboard.js' : 'dashboard.css';
         const type = route === '/dashboard' ? 'text/html; charset=utf-8'

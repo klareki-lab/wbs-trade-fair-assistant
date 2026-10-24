@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {EventEmitter} from 'node:events';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
@@ -25,6 +26,15 @@ test('PG adapter uses only read-only SQL/parameters/verified TLS',async()=>{
  assert.equal(calls[0][0],'BEGIN READ ONLY');assert.match(calls[1][0],/^SET LOCAL statement_timeout/);
  assert.equal(calls[2][0],DASHBOARD_SQL);assert.equal(calls[2][1].length,9);assert.equal(calls[3][0],'COMMIT');
  assert.deepEqual(poolOpts.ssl,{rejectUnauthorized:true});assert.equal(poolOpts.max,3);
+ await db.close();
+});
+test('idle PostgreSQL pool error does not terminate Gateway',async()=>{
+ const pool=new EventEmitter();
+ pool.connect=async()=>({query:async sql=>sql===DASHBOARD_SQL?{rows:[{payload}]}:{rows:[]},release(){}});
+ pool.end=async()=>{};
+ const db=createDashboardDb({connectionString:'postgresql://test:test@localhost/neondb',poolFactory:()=>pool});
+ await db.query(opts());
+ assert.doesNotThrow(()=>pool.emit('error',new Error('synthetic database disconnect')));
  await db.close();
 });
 test('SQL statement remains fixed and user text is bound, never interpolated',async()=>{

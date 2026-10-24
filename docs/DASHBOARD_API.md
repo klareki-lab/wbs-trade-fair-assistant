@@ -1,7 +1,8 @@
 # Dashboard API (read-only) · v1 draft
 
 The dashboard is **off by default**. It is enabled only when the operator sets
-`DASHBOARD_ENABLED=true` and `DASHBOARD_DATABASE_URL=<postgres-url>` on the
+`DASHBOARD_ENABLED=true`, `DASHBOARD_DATABASE_URL=<postgres-url>` and a
+distinct `DASHBOARD_ACCESS_KEY` on the
 gateway server. Browsers never see the Postgres URL. There is no new Basic
 Auth, no new webhook, no new browser-side token.
 
@@ -29,8 +30,9 @@ only and user text is passed as **bound parameters**; no interpolation.
   `%` and `_` from the user are treated as search wildcards in v1.
 - Sort tie-break is `lead_id ASC` for a stable order across pages.
 
-Authorization: the existing gateway session cookie, created by
-`POST /api/login` with the team access key. Unauthenticated requests get
+Authorization: an admin-scoped gateway session cookie, created by
+`POST /api/login` with `DASHBOARD_ACCESS_KEY`. The ordinary form access key
+cannot open the Dashboard. Unauthenticated or form-only requests get
 `401 AUTH_REQUIRED`. The request is counted against the existing `status`
 rate-limit bucket (80 req / min / peer IP).
 
