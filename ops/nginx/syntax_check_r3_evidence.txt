@@ -1,0 +1,22 @@
+WBS-TF-06 R3 offline verification — 2026-10-24
+Reviewed input: PR #5 at 798e3035f53bb84bf95d647ff8e8cb416f5f07f8
+
+$ bash -n ops/nginx/check_vhosts.sh
+PASS
+
+$ ./ops/nginx/check_vhosts.sh
+nginx:1.24, temporary one-day self-signed certificate, each vhost tested alone
+PASS messe.klare-ki.de.bootstrap.conf
+PASS messe.klare-ki.de.https-holding.conf
+PASS messe.klare-ki.de.conf
+
+$ npm test --prefix gateway
+Node v24.15.0
+tests 40, pass 40, fail 0
+
+$ bash -n on each ```bash block in docs/WBS_TF_06_F3B_PREP.md
+11 blocks, 11 pass, 0 fail
+
+The checks used local Docker and temporary test files. No production
+certificate, service or database was touched. No credential values appear
+in this evidence.
