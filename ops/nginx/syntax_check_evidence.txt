@@ -1,0 +1,19 @@
+=== WBS-TF-06 nginx syntax evidence ===
+nginx image: nginx:1.24 (matches VPS version)
+stand-in cert: self-signed 1-day RSA 2048, CN=messe.klare-ki.de
+
+--- ops/nginx/messe.klare-ki.de.bootstrap.conf ---
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+--- ops/nginx/messe.klare-ki.de.https-holding.conf ---
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+--- ops/nginx/messe.klare-ki.de.conf ---
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+=== Node tests ===
+v24.15.0
+ℹ tests 40
+ℹ pass 40
+ℹ fail 0
