@@ -1,4 +1,136 @@
-# Handover — WBS-TF-BASELINE-01
+# Handover
+
+The baseline collection section (WBS-TF-BASELINE-01) is kept intact below
+for history. The dashboard integration section (WBS-TF-03) was added by a
+follow-up task on branch `feature/astra-dashboard`.
+
+---
+
+# WBS-TF-03 — Dashboard integration
+
+**Branch:** `feature/astra-dashboard`
+**Base:** `baseline/live-2026-10-24` at commit `854f247…`
+**Date:** 2026-10-24
+
+**Readiness summary**
+
+| Gate | State | Why |
+| --- | --- | --- |
+| **CODE READY** | ✅ | Hand-written integration applied; 38/38 mock tests pass (`tests/test_gateway_baseline.mjs`, `tests/test_dashboard.mjs`, `tests/test_gateway_dashboard.mjs`). |
+| **DB READY** | ⏳ | Blocked on Neon DDL review as a role with `SELECT` on `processing_results` and `email_outbox`. See `docs/DASHBOARD_DEPLOYMENT.md` §B. |
+| **STAGING READY** | ⏳ | Blocked on DB READY **and** a Dockerfile/compose that installs `pg` inside the gateway image (the live container has no `node_modules`). See `docs/DASHBOARD_DEPLOYMENT.md` §D. |
+| **PRODUCTION READY** | ⏳ | Blocked on STAGING READY + Owner sign-off + Gate F3B confirmation that nginx forwards `/dashboard*` and `/api/dashboard`. |
+
+## Patcher outcome
+
+Astra's `scripts/apply_dashboard.mjs` is **not committed**. Two of its five
+anchors reference an older/different gateway variant and do not exist in
+the real `854f247` baseline:
+
+- `  const publicEnabled = env.PUBLIC_FORM_ENABLED === 'true';` as a
+  standalone line — the baseline inlines it into the `return { … }` block.
+- `publicEnabled, publicPrivacyNoticeUrl, secureCookies, clientIpMode,
+  trustedProxyIps,` — the baseline has no `publicPrivacyNoticeUrl`,
+  `clientIpMode`, or `trustedProxyIps`.
+
+Running the patcher would have failed closed by design, so I did not
+force it. The equivalent semantic change was applied by hand to
+`gateway/server.mjs` with the same `WBS-TF-02 DASHBOARD` marker comments.
+Astra's provenance docs are preserved under `ops/astra-package/` for
+traceability.
+
+## What was done
+
+- Added `gateway/dashboard-{api,db}.mjs`, `web/dashboard.{js,css}`,
+  `web/Messe-Admin-Hub.html`, `sql/dashboard_snapshot.sql`,
+  `sql/PREFLIGHT_READ_ONLY.sql`.
+- Patched `gateway/server.mjs` to extend `loadConfig()`
+  (`DASHBOARD_ENABLED`, `DASHBOARD_DATABASE_URL`), `createGateway()`
+  (`dashboardStore` option, lazy adapter instantiation) and the HTTP
+  handler (new routes `/api/dashboard`, `/dashboard`, `/dashboard.js`,
+  `/dashboard.css`).
+- Added `pg@^8.16.3` to `gateway/package.json`; generated
+  `gateway/package-lock.json` without downloading `node_modules` into the
+  repo (`npm install --package-lock-only`).
+- Added test suites:
+  - `tests/test_gateway_baseline.mjs` — 8 new regression tests that cover
+    `/healthz`, static assets, login/logout, capture, status, public form
+    disabled, dashboard inert when disabled.
+  - `tests/test_dashboard.mjs` — 25 Astra tests (pagination, filter
+    validation, contract validation, SQL binding, read-only transaction,
+    TLS verification, no mutating SQL in migration).
+  - `tests/test_gateway_dashboard.mjs` — 5 Astra tests (fail-closed
+    config, auth gating, assets served, 503 on store error, 405 on write).
+  - `node --test tests/*.mjs` → **38 pass, 0 fail**.
+- Wrote `docs/DASHBOARD_API.md`, `docs/DASHBOARD_DEPLOYMENT.md`,
+  `docs/ROLLBACK.md`, `docs/SECURITY_REVIEW.md`.
+
+## What was explicitly **not** touched
+
+- `baseline/live-2026-10-24`, `main`.
+- `/opt/wbs-trade-fair/` on the VPS, systemd, nginx, Docker containers.
+- n8n workflows (no import, activation or execution).
+- Neon schema or rows.
+
+## Known gaps / blockers
+
+1. **Partial DDL verification.** `dashboard_snapshot` reads columns on
+   `processing_results` (`score_total`, `score_band`, `result_payload`,
+   `created_at`) and `email_outbox` (`status`, `last_error_code`,
+   `updated_at`) that the baseline's `trade_fair_app` role cannot
+   `SELECT`. The index inventory already in `sql/trade_fair_schema.txt`
+   confirms the key columns exist (`processing_results_pkey` on
+   `lead_id`, `email_ready_queue` filtering on `status`, etc.), but
+   non-key column *names* are still unverified. **Blocks DB READY.**
+
+2. **`pg` not present in the live container.** The live container
+   mounts the gateway dir read-only from the host. Adding a dependency
+   requires either a thin Dockerfile that runs `npm ci --omit=dev` or an
+   equivalent init strategy. **Blocks STAGING READY.**
+
+3. **Dashboard role.** Should `trade_fair_app` be reused as
+   `dashboard_role` (expanding its visibility) or should a dedicated
+   least-privilege role be provisioned? Default recommendation in this
+   repo is a dedicated role. **Decision needed before Neon migration.**
+
+4. **nginx vhost** (Gate F3B). Needs to forward
+   `/dashboard*` and `/api/dashboard` through the existing same-origin
+   policy. Not in scope here. **Blocks PRODUCTION READY.**
+
+## Black-side next steps (handover)
+
+1. Pull `feature/astra-dashboard` locally.
+2. Run `node --test tests/*.mjs` to confirm the 38/38 result on the
+   reviewer's own machine.
+3. Decide (with the Owner): reuse `trade_fair_app` as `dashboard_role` or
+   provision a dedicated role? Record the decision in a new ADR before
+   touching Neon.
+4. On an isolated Neon branch, run `sql/PREFLIGHT_READ_ONLY.sql` and
+   diff its column list against `docs/DASHBOARD_API.md`'s "Data
+   provenance" expectations. If a column name differs, update
+   `sql/dashboard_snapshot.sql` on this branch rather than deploying a
+   mismatching function.
+5. On the same isolated branch, run `sql/dashboard_snapshot.sql` with
+   `-v dashboard_role=<approved>` and verify positive + negative smokes
+   (`docs/DASHBOARD_DEPLOYMENT.md` §C).
+6. Build a candidate gateway image with `pg` installed; deploy on
+   staging with `DASHBOARD_ENABLED=true`. Run the staging acceptance in
+   `docs/DASHBOARD_DEPLOYMENT.md` §E.
+7. Only after Owner approval + Gate F3B confirmation, roll to
+   production. Rollback plan in `docs/ROLLBACK.md`.
+
+## Resuming this task if interrupted
+
+- All completed safe work is committed on `feature/astra-dashboard`.
+- The last commit SHA is the latest tip of that branch.
+- The Draft PR targets `baseline/live-2026-10-24`, **not** `main`, so a
+  merge is impossible without first merging the baseline PR.
+- No external system is in an inconsistent state because none was
+  modified.
+
+---
+
+# WBS-TF-BASELINE-01 (preserved history)
 
 **Status:** PASS (with one documented data gap, see §Gaps below).
 

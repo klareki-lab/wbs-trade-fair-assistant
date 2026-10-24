@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Messe Hub · Admin · Train Today</title>
+<link rel="stylesheet" href="/dashboard.css">
+</head><body>
+<svg width="0" height="0"  aria-hidden="true">
+  <symbol id="i-dash" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 12h7M9 16h5"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 4.6 4.6 1.9-4.6 1.9L12 16l-1.9-4.6-4.6-1.9 4.6-1.9z"/><path d="M19 15l.8 2.2 2.2.8-2.2.8L19 21l-.8-2.2-2.2-.8 2.2-.8z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18.5 14.8c1.6.9 2.6 2.6 3 5.2"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-6"/></symbol>
+</svg>
+<div class="shell" id="app">
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">TT</div>
+      <div><strong>Messe Hub<span class="admin-tag">Admin</span></strong><span>Train Today · Vertrieb</span></div>
+    </div>
+    <div class="nav-label">Übersicht</div>
+    <button class="nav on" type="button" data-go="top"><svg class="i"><use href="#i-dash"/></svg><span class="lbl">Dashboard</span></button>
+    <button class="nav" type="button" data-go="tabelle" data-tab="alle"><svg class="i"><use href="#i-db"/></svg><span class="lbl">Lead-Datenbank</span></button>
+    <button class="nav" type="button" data-go="tabelle" data-tab="duplikate"><svg class="i"><use href="#i-copy"/></svg><span class="lbl">Duplikate</span><span class="badge" id="navDup"></span></button>
+    <div class="nav-label">Navigation</div>
+    <a class="nav" href="/"><svg class="i"><use href="#i-note"/></svg><span class="lbl">Zum Formular</span></a>
+    
+    <div class="side-foot">
+      <div class="live"><i class="pulse" id="pulse"></i><span id="liveText" role="status">Verbinde …</span></div>
+      <div class="user-row">
+        <div class="who"><div class="avatar" id="avatar">A</div><span id="whoName"></span></div>
+        <button type="button" id="logoutBtn" title="Abmelden"><svg class="i"><use href="#i-out"/></svg></button>
+      </div>
+    </div>
+  </aside>
+
+  <main id="top">
+    <div class="page-head">
+      <div>
+        <h1>Dashboard</h1>
+        <p id="pageSub">Überblick über alle Messe-Leads</p>
+      </div>
+      <div class="head-actions">
+        
+        <a class="btn primary" href="/"><svg class="i"><use href="#i-plus"/></svg>Lead erfassen</a>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="card kpi"><div class="ic a"><svg class="i"><use href="#i-users"/></svg></div><div><div class="lbl">Leads gesamt</div><div class="val" id="kGesamt">–</div><div class="sub" id="kGesamtSub">&nbsp;</div></div></div>
+      <div class="card kpi"><div class="ic b"><svg class="i"><use href="#i-flag"/></svg></div><div><div class="lbl">HOT-Leads</div><div class="val" id="kA">–</div><div class="sub" id="kASub">&nbsp;</div></div></div>
+      <div class="card kpi"><div class="ic c"><svg class="i"><use href="#i-gauge"/></svg></div><div><div class="lbl">Ø Score (bewertet)</div><div class="val" id="kSchnitt">–</div><div class="sub" id="kSchnittSub">&nbsp;</div></div></div>
+      <div class="card kpi"><div class="ic d"><svg class="i"><use href="#i-copy"/></svg></div><div><div class="lbl">Mögliche Duplikate</div><div class="val" id="kDup">–</div><div class="sub" id="kDupSub">&nbsp;</div></div></div>
+      <div class="card kpi"><div class="ic a"><svg class="i"><use href="#i-cal"/></svg></div><div><div class="lbl">Verarbeitung fehlgeschlagen</div><div class="val" id="kFaellig">–</div><div class="sub" id="kFaelligSub">&nbsp;</div></div></div>
+    </div>
+
+    <div class="charts">
+      <div class="card">
+        <div class="card-head"><div><h2>Leads nach Trainingsinteresse</h2><p>Gespeicherte Trainingsinteressen · alle Seiten</p></div></div>
+        <div class="card-body"><div class="bars" id="interestBars"><div class="empty">Lade Daten …</div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><h2>Leads nach Kategorie</h2><p>HOT · WARM · COLD · Unbewertet</p></div></div>
+        <div class="card-body" id="katBox"><div class="empty">Lade Daten …</div></div>
+      </div>
+    </div>
+
+    <div class="card table-card" id="tabelle">
+      <div class="card-head">
+        <div><h2>Lead-Datenbank</h2><p>Neon PostgreSQL · Live-Status · schreibgeschützt</p></div>
+        <div class="tools">
+          <div class="seg" id="tabs"></div><select id="filterBand" aria-label="Scoring"><option value="">Alle Scores</option><option>HOT</option><option>WARM</option><option>COLD</option><option value="UNSCORED">Unbewertet</option></select><select id="filterProcessing" aria-label="Verarbeitung"><option value="">Alle Status</option><option>pending</option><option>processing</option><option>completed</option><option>failed</option></select><select id="filterEmail" aria-label="E-Mail"><option value="">Alle E-Mails</option><option>pending</option><option>leased</option><option>sending</option><option>delivered</option><option>uncertain</option><option>failed</option><option value="none">Ohne E-Mail</option></select><select id="sort" aria-label="Sortieren"><option value="created:desc">Neueste</option><option value="created:asc">Älteste</option><option value="company:asc">Firma A–Z</option><option value="company:desc">Firma Z–A</option><option value="score:desc">Score absteigend</option><option value="score:asc">Score aufsteigend</option></select>
+          <div class="search"><svg class="i"><use href="#i-search"/></svg><input type="search" id="search" placeholder="Suchen …"></div>
+          <button class="btn icon" type="button" id="refreshBtn" title="Jetzt aktualisieren"><svg class="i"><use href="#i-refresh"/></svg></button>
+        </div>
+      </div>
+      
+      <div class="table-scroll" id="tableBox"><div class="empty">Lade Daten …</div></div>
+      <div class="table-foot" id="tableFoot"></div><div class="table-foot" class="pagination"><button class="btn sm" id="prev" type="button">← Zurück</button><span id="pageInfo">–</span><button class="btn sm" id="next" type="button">Weiter →</button></div>
+    </div>
+  </main>
+</div>
+
+
+<div class="backdrop" id="backdrop"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="d-head">
+    <div class="ic" id="dIcon"><svg class="i"><use href="#i-note"/></svg></div>
+    <div class="t"><strong id="dTitle"></strong><span id="dSub"></span></div>
+    
+    <button class="btn icon" type="button" id="closeDrawer" title="Schließen"><svg class="i"><use href="#i-x"/></svg></button>
+  </div>
+  <div class="d-msgs" id="msgs"></div>
+  </aside>
+
+
+<div class="toast" id="toast" role="alert"></div><script type="module" src="/dashboard.js"></script></body></html>

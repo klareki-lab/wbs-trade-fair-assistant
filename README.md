@@ -26,7 +26,14 @@ iteration without inferring state from screenshots or chat logs.
 - `docs/LIVE_BASELINE.md` — exactly what was captured, from where, and verification notes.
 - `docs/WORKFLOW_MANIFEST.md` — workflow IDs, versions, trigger types, credential references.
 - `docs/DEPLOYMENT.md` — observed container / mount / env configuration (no secrets).
-- `docs/HANDOVER.md` — gaps, open questions, suggested next task.
+- `docs/DASHBOARD_API.md` — read-only `/api/dashboard` contract (candidate, off by default).
+- `docs/DASHBOARD_DEPLOYMENT.md` — Neon preflight, SECURITY DEFINER migration, staging acceptance.
+- `docs/SECURITY_REVIEW.md` — dashboard-specific security review and open decisions.
+- `docs/ROLLBACK.md` — rollback phases for the dashboard rollout.
+- `docs/HANDOVER.md` — baseline gaps + dashboard readiness summary (CODE/DB/STAGING/PRODUCTION).
+
+Astra's WBS-TF-02 provenance (overview, decision record, test report,
+SHA256SUMS) is preserved under `ops/astra-package/`.
 
 ## Safety
 
