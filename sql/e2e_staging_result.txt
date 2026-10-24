@@ -1,0 +1,22 @@
+=== anon ===
+healthz=200
+index=200
+api_anon=401
+dash_anon=401
+dash_js_anon=401
+dash_css_anon=401
+=== login form key ===
+login_form=200
+api_form=401
+dash_form=401
+=== login admin key ===
+login_admin=200
+dash_html_admin=200
+dash_js_admin=200
+dash_css_admin=200
+=== admin api valid / invalid / POST ===
+api_admin=503
+api_admin_body_head:
+{"success":false,"error":{"code":"STATUS_UNAVAILABLE","message":"The current processing status is temporarily unavailable.","details":[]},"retryable":true,"persistence_status":"unknown"}
+api_admin_bad=400
+api_admin_post=405

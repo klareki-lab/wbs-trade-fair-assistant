@@ -1,0 +1,75 @@
+BEGIN
+SET
+ database | database_role  |   pg_version
+----------+----------------+----------------
+ neondb   | trade_fair_app | 18.6 (fd34222)
+(1 row)
+
+    table_name    |         column_name         |        data_type         | is_nullable
+------------------+-----------------------------+--------------------------+-------------
+ companies        | company_id                  | uuid                     | NO
+ companies        | company_name                | text                     | NO
+ companies        | company_name_normalized     | text                     | NO
+ companies        | website                     | text                     | YES
+ companies        | created_at                  | timestamp with time zone | NO
+ contacts         | contact_id                  | uuid                     | NO
+ contacts         | company_id                  | uuid                     | NO
+ contacts         | contact_name                | text                     | YES
+ contacts         | contact_name_normalized     | text                     | YES
+ contacts         | email                       | text                     | YES
+ contacts         | email_verified              | boolean                  | NO
+ contacts         | phone                       | text                     | YES
+ contacts         | phone_normalized            | text                     | YES
+ contacts         | created_at                  | timestamp with time zone | NO
+ lead_submissions | lead_id                     | text                     | NO
+ lead_submissions | source                      | text                     | NO
+ lead_submissions | submission_id               | text                     | NO
+ lead_submissions | company_id                  | uuid                     | NO
+ lead_submissions | contact_id                  | uuid                     | YES
+ lead_submissions | duplicate_status            | text                     | NO
+ lead_submissions | processing_status           | text                     | NO
+ lead_submissions | processing_attempts         | integer                  | NO
+ lead_submissions | processing_started_at       | timestamp with time zone | YES
+ lead_submissions | processed_at                | timestamp with time zone | YES
+ lead_submissions | last_error_code             | character varying        | YES
+ lead_submissions | raw_payload                 | jsonb                    | NO
+ lead_submissions | normalized_payload          | jsonb                    | NO
+ lead_submissions | uncertainty_flags           | jsonb                    | NO
+ lead_submissions | possible_contact_ids        | ARRAY                    | NO
+ lead_submissions | review_required             | boolean                  | NO
+ lead_submissions | receipt                     | jsonb                    | NO
+ lead_submissions | wf_b_payload                | jsonb                    | NO
+ lead_submissions | created_at                  | timestamp with time zone | NO
+ lead_submissions | persisted_at                | timestamp with time zone | NO
+ lead_submissions | processing_cycle_id         | uuid                     | NO
+ lead_submissions | processing_cycle_attempts   | integer                  | NO
+ lead_submissions | processing_max_attempts     | integer                  | NO
+ lead_submissions | processing_next_retry_at    | timestamp with time zone | YES
+ lead_submissions | processing_lease_token      | uuid                     | YES
+ lead_submissions | processing_lease_expires_at | timestamp with time zone | YES
+ lead_submissions | processing_worker_id        | character varying        | YES
+ lead_submissions | processing_updated_at       | timestamp with time zone | NO
+(42 rows)
+
+    table_name
+------------------
+ companies
+ contacts
+ lead_submissions
+(3 rows)
+
+ proname | signature | security_definer
+---------+-----------+------------------
+(0 rows)
+
+    rolname     | rolcanlogin | rolsuper | rolinherit
+----------------+-------------+----------+------------
+ trade_fair_app | t           | f        | t
+(1 row)
+
+ app_schema_usage
+------------------
+ t
+(1 row)
+
+ROLLBACK
