@@ -18,6 +18,9 @@ export function createDashboardDb({connectionString, poolFactory}={}) {
         poolFactory=opts=>new Pool(opts);
       }
       pool=poolFactory({connectionString:safeUrl.toString(),ssl:{rejectUnauthorized:true},max:3,connectionTimeoutMillis:4000,idleTimeoutMillis:15000,application_name:'trade_fair_dashboard'});
+      // pg emits an error for an idle client when the database disconnects.
+      // The pool removes that client; without a listener Node terminates the Gateway.
+      pool.on?.('error', () => {});
     }
     return pool;
   };

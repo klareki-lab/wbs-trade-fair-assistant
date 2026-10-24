@@ -27,7 +27,8 @@ iteration without inferring state from screenshots or chat logs.
 - `docs/WORKFLOW_MANIFEST.md` — workflow IDs, versions, trigger types, credential references.
 - `docs/DEPLOYMENT.md` — observed container / mount / env configuration (no secrets).
 - `docs/DASHBOARD_API.md` — read-only `/api/dashboard` contract (candidate, off by default).
-- `docs/DASHBOARD_DEPLOYMENT.md` — Neon preflight, SECURITY DEFINER migration, staging acceptance.
+- `docs/DASHBOARD_DEPLOYMENT.md` — historical WBS-TF-03 candidate procedure.
+- `docs/WBS_TF_04_REPORT.md` — independent review, confirmed DDL, smoke tests, current gates and staging handover.
 - `docs/SECURITY_REVIEW.md` — dashboard-specific security review and open decisions.
 - `docs/ROLLBACK.md` — rollback phases for the dashboard rollout.
 - `docs/HANDOVER.md` — baseline gaps + dashboard readiness summary (CODE/DB/STAGING/PRODUCTION).

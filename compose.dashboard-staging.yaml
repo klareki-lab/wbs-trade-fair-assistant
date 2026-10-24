@@ -1,0 +1,27 @@
+services:
+  dashboard-staging:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard-staging
+    image: wbs-trade-fair-dashboard-staging:local
+    container_name: wbs-trade-fair-dashboard-staging
+    restart: "no"
+    env_file:
+      - ${WBS_STAGING_ENV_FILE:?Set WBS_STAGING_ENV_FILE to a private staging env file}
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3000"
+      APP_ORIGIN: http://127.0.0.1:13080
+      PUBLIC_FORM_ENABLED: "false"
+      DASHBOARD_ENABLED: "true"
+      N8N_CAPTURE_URL: http://127.0.0.1:9/disabled
+      N8N_STATUS_URL: http://127.0.0.1:9/disabled
+    ports:
+      - "127.0.0.1:13080:3000"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true

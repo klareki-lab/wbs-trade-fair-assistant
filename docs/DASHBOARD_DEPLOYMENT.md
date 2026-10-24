@@ -1,5 +1,9 @@
 # Dashboard — Deployment
 
+The current WBS-TF-04 review, role decision, staging procedure and gate status
+are in [WBS_TF_04_REPORT.md](WBS_TF_04_REPORT.md). This document records the
+earlier WBS-TF-03 candidate and its historical open questions.
+
 This document applies **in addition to** `docs/DEPLOYMENT.md` (which
 describes the live gateway container that this PR does not change in
 place). The dashboard is additive, off by default, and intentionally

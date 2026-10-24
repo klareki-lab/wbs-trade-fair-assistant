@@ -1,5 +1,10 @@
 # Security Review — WBS-TF-03
 
+WBS-TF-04 corrections and tested findings are recorded in
+[WBS_TF_04_REPORT.md](WBS_TF_04_REPORT.md). The dashboard now requires a
+separate admin key and scoped session; the table below describes the original
+candidate at the reviewed input SHA.
+
 Scope: the dashboard integration applied on branch
 `feature/astra-dashboard`, on top of baseline
 `854f247546742fd69cc5c81385cf2b73657d440b`.

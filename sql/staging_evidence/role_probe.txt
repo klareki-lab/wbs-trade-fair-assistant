@@ -1,0 +1,31 @@
+--- current_user as trade_fair_dashboard ---
+trade_fair_dashboard|neondb
+
+--- positive: dashboard_snapshot(50,…) (empty branch, before seed) ---
+{"stats": {"hot": 0, "cold": 0, "warm": 0, "today": 0, "total": 0, "failed": 0, "unscored": 0, "interests": [], "duplicates": 0, "scored_average": null, "email_attention": 0}, "total": 0}
+
+--- negative: SELECT on base tables (expect ERROR permission denied) ---
+companies           : ERROR:  permission denied for table companies
+contacts            : ERROR:  permission denied for table contacts
+lead_submissions    : ERROR:  permission denied for table lead_submissions
+processing_results  : ERROR:  permission denied for table processing_results
+email_outbox        : ERROR:  permission denied for table email_outbox
+
+--- negative: EXECUTE on other application functions (expect false) ---
+begin_email_send/trade_fair.begin_email_send(uuid,uuid)                                                      exec=false
+capture_lead/trade_fair.capture_lead(jsonb)                                                                  exec=false
+claim_email/trade_fair.claim_email(text,integer,integer,integer)                                             exec=false
+claim_processing/trade_fair.claim_processing(text,integer,integer,integer)                                   exec=false
+fail_email_send/trade_fair.fail_email_send(uuid,uuid,text,text)                                              exec=false
+fail_processing/trade_fair.fail_processing(text,uuid,text,boolean)                                           exec=false
+finish_email_send/trade_fair.finish_email_send(uuid,uuid,text)                                               exec=false
+finish_processing/trade_fair.finish_processing(text,uuid,jsonb,jsonb)                                        exec=false
+get_lead_status/trade_fair.get_lead_status(text,text)                                                        exec=false
+queue_health/trade_fair.queue_health()                                                                       exec=false
+renew_processing/trade_fair.renew_processing(text,uuid,integer)                                              exec=false
+resolve_email_uncertain/trade_fair.resolve_email_uncertain(uuid,text,text)                                   exec=false
+retry_failed_email/trade_fair.retry_failed_email(uuid,text)                                                  exec=false
+retry_failed_processing/trade_fair.retry_failed_processing(text,text)                                        exec=false
+
+--- positive: EXECUTE on dashboard_snapshot ---
+dashboard_snapshot/trade_fair.dashboard_snapshot(integer,integer,text,text,text,text,text,text,text) exec=true

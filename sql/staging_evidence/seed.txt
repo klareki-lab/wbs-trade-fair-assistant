@@ -1,0 +1,8 @@
+BEGIN
+INSERT 0 1
+COMMIT
+                  lead_id                  |     company      | processing_status | duplicate_status
+-------------------------------------------+------------------+-------------------+------------------
+ FAIR-2e063b26-bafa-4b4b-9404-2ca20a6d3459 | WBS Staging GmbH | completed         | NEW
+(1 row)
+
