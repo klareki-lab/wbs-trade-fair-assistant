@@ -1,0 +1,16 @@
+BEGIN
+DELETE 1
+DELETE 1
+DELETE 1
+DELETE 1
+DELETE 1
+    ?column?
+----------------
+ remaining_ls=0
+ remaining_pr=0
+ remaining_eo=0
+ remaining_co=0
+ remaining_ct=0
+(5 rows)
+
+COMMIT

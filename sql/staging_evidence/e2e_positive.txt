@@ -1,0 +1,44 @@
+=== anon ===
+healthz=200
+api_anon=401
+dash_anon=401
+=== login form key ===
+login_form=200
+api_form=401
+dash_form=401
+=== login admin key ===
+login_admin=200
+dash_html_admin=200
+dash_js_admin=200
+dash_css_admin=200
+=== admin api positive ===
+api_admin=200
+--- extracted summary ---
+total= 1
+stats.total= 1
+stats.warm= 1
+stats.hot= 0
+stats.cold= 0
+stats.unscored= 0
+stats.scored_average= 45
+stats.email_attention= 0
+leads_count= 1
+lead.lead_id= FAIR-2e063b26-bafa-4b4b-9404-2ca20a6d3459
+lead.company= WBS Staging GmbH
+lead.contact= Synthetic Reviewer
+lead.email= synthetic@example.invalid
+lead.score_band= WARM
+lead.score_total= 45
+lead.email_status= delivered
+lead.processing_status= completed
+lead.duplicate_status= NEW
+lead.training_interest= automation
+=== admin api filter: band=WARM ===
+api_warm=200
+warm_total= 1
+=== admin api filter: band=HOT (should be 0) ===
+api_hot=200
+hot_total= 0
+=== invalid filter + POST ===
+api_bad=400
+api_post=405
