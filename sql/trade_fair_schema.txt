@@ -1,0 +1,119 @@
+?column?
+=== TABLES ===
+(1 row)
+table_name	table_type
+companies	BASE TABLE
+contacts	BASE TABLE
+lead_submissions	BASE TABLE
+(3 rows)
+?column?
+=== COLUMNS ===
+(1 row)
+table_name	column_name	data_type	is_nullable	column_default	character_maximum_length
+companies	company_id	uuid	NO	gen_random_uuid()	
+companies	company_name	text	NO		
+companies	company_name_normalized	text	NO		
+companies	website	text	YES		
+companies	created_at	timestamp with time zone	NO	clock_timestamp()	
+contacts	contact_id	uuid	NO	gen_random_uuid()	
+contacts	company_id	uuid	NO		
+contacts	contact_name	text	YES		
+contacts	contact_name_normalized	text	YES		
+contacts	email	text	YES		
+contacts	email_verified	boolean	NO	false	
+contacts	phone	text	YES		
+contacts	phone_normalized	text	YES		
+contacts	created_at	timestamp with time zone	NO	clock_timestamp()	
+lead_submissions	lead_id	text	NO		
+lead_submissions	source	text	NO		
+lead_submissions	submission_id	text	NO		
+lead_submissions	company_id	uuid	NO		
+lead_submissions	contact_id	uuid	YES		
+lead_submissions	duplicate_status	text	NO		
+lead_submissions	processing_status	text	NO	'pending'::text	
+lead_submissions	processing_attempts	integer	NO	0	
+lead_submissions	processing_started_at	timestamp with time zone	YES		
+lead_submissions	processed_at	timestamp with time zone	YES		
+lead_submissions	last_error_code	character varying	YES		64
+lead_submissions	raw_payload	jsonb	NO		
+lead_submissions	normalized_payload	jsonb	NO		
+lead_submissions	uncertainty_flags	jsonb	NO	'[]'::jsonb	
+lead_submissions	possible_contact_ids	ARRAY	NO	ARRAY[]::uuid[]	
+lead_submissions	review_required	boolean	NO	false	
+lead_submissions	receipt	jsonb	NO		
+lead_submissions	wf_b_payload	jsonb	NO		
+lead_submissions	created_at	timestamp with time zone	NO		
+lead_submissions	persisted_at	timestamp with time zone	NO	clock_timestamp()	
+lead_submissions	processing_cycle_id	uuid	NO	gen_random_uuid()	
+lead_submissions	processing_cycle_attempts	integer	NO	0	
+lead_submissions	processing_max_attempts	integer	NO	5	
+lead_submissions	processing_next_retry_at	timestamp with time zone	YES	clock_timestamp()	
+lead_submissions	processing_lease_token	uuid	YES		
+lead_submissions	processing_lease_expires_at	timestamp with time zone	YES		
+lead_submissions	processing_worker_id	character varying	YES		128
+lead_submissions	processing_updated_at	timestamp with time zone	NO	clock_timestamp()	
+(42 rows)
+?column?
+=== PRIMARY KEYS ===
+(1 row)
+table_name	column_name
+companies	company_id
+contacts	contact_id
+lead_submissions	lead_id
+(3 rows)
+?column?
+=== FOREIGN KEYS ===
+(1 row)
+table_name	column_name	ref_table	ref_column
+(0 rows)
+?column?
+=== INDEXES ===
+(1 row)
+tablename	indexname	indexdef
+companies	companies_comparison_name_unique	CREATE UNIQUE INDEX companies_comparison_name_unique ON trade_fair.companies USING btree (company_name_normalized)
+companies	companies_pkey	CREATE UNIQUE INDEX companies_pkey ON trade_fair.companies USING btree (company_id)
+contacts	contacts_company_email_lookup	CREATE INDEX contacts_company_email_lookup ON trade_fair.contacts USING btree (company_id, email) WHERE (email IS NOT NULL)
+contacts	contacts_company_name_lookup	CREATE INDEX contacts_company_name_lookup ON trade_fair.contacts USING btree (company_id, contact_name_normalized) WHERE (contact_name_normalized IS NOT NULL)
+contacts	contacts_company_phone_lookup	CREATE INDEX contacts_company_phone_lookup ON trade_fair.contacts USING btree (company_id, phone_normalized) WHERE (phone_normalized IS NOT NULL)
+contacts	contacts_email_lookup	CREATE INDEX contacts_email_lookup ON trade_fair.contacts USING btree (email) WHERE (email IS NOT NULL)
+contacts	contacts_pkey	CREATE UNIQUE INDEX contacts_pkey ON trade_fair.contacts USING btree (contact_id)
+contacts	contacts_verified_company_email_unique	CREATE UNIQUE INDEX contacts_verified_company_email_unique ON trade_fair.contacts USING btree (company_id, email) WHERE (email_verified AND (email IS NOT NULL))
+email_outbox	email_expired_leases	CREATE INDEX email_expired_leases ON trade_fair.email_outbox USING btree (lease_expires_at) WHERE (status = ANY (ARRAY['leased'::text, 'sending'::text]))
+email_outbox	email_outbox_idempotency_key_key	CREATE UNIQUE INDEX email_outbox_idempotency_key_key ON trade_fair.email_outbox USING btree (idempotency_key)
+email_outbox	email_outbox_lead_id_key	CREATE UNIQUE INDEX email_outbox_lead_id_key ON trade_fair.email_outbox USING btree (lead_id)
+email_outbox	email_outbox_pkey	CREATE UNIQUE INDEX email_outbox_pkey ON trade_fair.email_outbox USING btree (outbox_id)
+email_outbox	email_ready_queue	CREATE INDEX email_ready_queue ON trade_fair.email_outbox USING btree (next_retry_at, created_at) WHERE (status = 'pending'::text)
+job_events	job_events_email_history	CREATE INDEX job_events_email_history ON trade_fair.job_events USING btree (outbox_id, created_at) WHERE (outbox_id IS NOT NULL)
+job_events	job_events_lead_history	CREATE INDEX job_events_lead_history ON trade_fair.job_events USING btree (lead_id, created_at)
+job_events	job_events_pkey	CREATE UNIQUE INDEX job_events_pkey ON trade_fair.job_events USING btree (event_id)
+lead_submissions	lead_submissions_company_created	CREATE INDEX lead_submissions_company_created ON trade_fair.lead_submissions USING btree (company_id, created_at DESC)
+lead_submissions	lead_submissions_contact_created	CREATE INDEX lead_submissions_contact_created ON trade_fair.lead_submissions USING btree (contact_id, created_at DESC) WHERE (contact_id IS NOT NULL)
+lead_submissions	lead_submissions_idempotency_unique	CREATE UNIQUE INDEX lead_submissions_idempotency_unique ON trade_fair.lead_submissions USING btree (source, submission_id)
+lead_submissions	lead_submissions_pending_queue	CREATE INDEX lead_submissions_pending_queue ON trade_fair.lead_submissions USING btree (persisted_at, lead_id) WHERE (processing_status = 'pending'::text)
+lead_submissions	lead_submissions_pkey	CREATE UNIQUE INDEX lead_submissions_pkey ON trade_fair.lead_submissions USING btree (lead_id)
+lead_submissions	lead_submissions_review_queue	CREATE INDEX lead_submissions_review_queue ON trade_fair.lead_submissions USING btree (persisted_at) WHERE review_required
+lead_submissions	processing_expired_leases	CREATE INDEX processing_expired_leases ON trade_fair.lead_submissions USING btree (processing_lease_expires_at) WHERE (processing_status = 'processing'::text)
+lead_submissions	processing_ready_queue	CREATE INDEX processing_ready_queue ON trade_fair.lead_submissions USING btree (processing_next_retry_at, persisted_at) WHERE (processing_status = 'pending'::text)
+processing_results	processing_results_completion_token_key	CREATE UNIQUE INDEX processing_results_completion_token_key ON trade_fair.processing_results USING btree (completion_token)
+processing_results	processing_results_pkey	CREATE UNIQUE INDEX processing_results_pkey ON trade_fair.processing_results USING btree (lead_id)
+schema_migrations	schema_migrations_pkey	CREATE UNIQUE INDEX schema_migrations_pkey ON trade_fair.schema_migrations USING btree (version)
+(27 rows)
+?column?
+=== VIEWS ===
+(1 row)
+table_name	view_definition
+(0 rows)
+?column?
+=== FUNCTIONS ===
+(1 row)
+routine_name	routine_type	data_type
+claim_processing	FUNCTION	record
+finish_processing	FUNCTION	jsonb
+capture_lead	FUNCTION	jsonb
+fail_processing	FUNCTION	jsonb
+claim_email	FUNCTION	record
+begin_email_send	FUNCTION	jsonb
+finish_email_send	FUNCTION	jsonb
+fail_email_send	FUNCTION	jsonb
+get_lead_status	FUNCTION	jsonb
+(9 rows)

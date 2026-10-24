@@ -1,0 +1,1161 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin · Messe Hub</title>
+<script>
+/* ╔═══════════════════════════════════════════════════════════════╗
+   ║  ZUGANGSDATEN                                                  ║
+   ║  Müssen identisch sein mit dem n8n-Zugang (Credential)         ║
+   ║  „Messe-Hub Login“ vom Typ „Basic Auth“.                       ║
+   ║  passwort: ''  → die Seite fragt beim Öffnen nach dem Passwort ║
+   ║  ACHTUNG: Wer diese Datei hat, kann das Passwort lesen!        ║
+   ╚═══════════════════════════════════════════════════════════════╝ */
+const CONFIG = {
+  benutzer: '',
+  passwort: '',
+
+  // Adresse der n8n-Instanz (ohne / am Ende). Auf einer anderen Instanz nur diese eine Zeile ändern.
+  n8nUrl: 'https://n8n.poljanzew.app',
+
+  datenUrl: '/webhook/messe-hub/daten',
+  gruppenUrl: '/webhook/messe-hub/gruppen',
+  chats: {
+    erfassen: {
+      titel: 'Lead erfassen',
+      untertitel: 'Notiz vom Messestand → Sergiis Lead-Workflow',
+      url: '/webhook/b7c1e0a4-5d2f-4c8e-9a31-6f0d2e8b4c17/chat',
+      leer: 'Füge die Gesprächsnotiz vom Messestand ein – Stichpunkte reichen. Die KI liest Firma, Kontakt, Budget und Follow-up heraus und übergibt den Lead an Sergiis Workflow (Recherche, Bewertung, E-Mail-Bericht).',
+      vorschlaege: [],
+      beispiele: [{
+        titel: 'Beispielnotiz: dm-drogerie markt',
+        text: 'Traf Lisa Weber von dm-drogerie markt gegen 11:30 Uhr an unserem Stand.\nSie ist in einem ihrer regionalen Teams für die Personalentwicklung zuständig. Sie erwähnte, dass sie derzeit mehrere interne Entwicklungsprogramme einführen und Führungskräftetrainings für angehende Manager prüfen.\nDas Budget für dieses Jahr ist bereits genehmigt. Sie möchte vor der Entscheidung einige Anbieter vergleichen.\nSie gaben an, in mehreren europäischen Ländern tätig zu sein und etwas Skalierbares zu benötigen.\nGefragt wurde, ob wir Erfahrung mit großen Einzelhandelsorganisationen haben.\nBitte melden Sie sich in den nächsten zwei Wochen wieder.\nE-Mail: lisa.weber@dm-example.com'
+      }],
+      platzhalter: 'Gesprächsnotiz vom Messestand …',
+      warten: 'Notiz wird ausgewertet und an Sergiis Workflow übergeben …'
+    },
+    assistent: {
+      titel: 'Lead-Assistent',
+      untertitel: 'Fragen an die Lead-Datenbank',
+      url: '/webhook/e4a92f61-0c3b-4d7a-8e15-2b9f6c0d7a38/chat',
+      leer: 'Priorisieren, Telefonate vorbereiten, Follow-up-Mails entwerfen – frag den Assistenten alles zu den gespeicherten Leads.',
+      vorschlaege: ['Wen sollte ich diese Woche zuerst anrufen?', 'Welche Leads sind mögliche Duplikate?', 'Entwirf eine Follow-up-Mail für den besten Lead'],
+      beispiele: [],
+      platzhalter: 'Deine Frage …',
+      warten: 'Assistent denkt nach …'
+    }
+  },
+  aktualisierenSek: 30
+};
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+  :root {
+    --navy: #1E2A4A;
+    --navy-deep: #131A2E;
+    --accent: #F26B3A;
+    --accent-strong: #DB5A2B;
+    --accent-soft: #FFF0E9;
+    --bg: #F3F5F9;
+    --surface: #FFFFFF;
+    --surface-2: #F8FAFC;
+    --border: #E3E8F0;
+    --text: #1A2238;
+    --muted: #66708A;
+    --faint: #98A2B8;
+    --ok: #1F8A5B; --ok-soft: #E7F6EF;
+    --warn: #A86A00; --warn-soft: #FFF4DC;
+    --err: #B23A3A; --err-soft: #FCEBEB;
+    --ka: #F26B3A; --kb: #E5A100; --kc: #3D6BC2;
+    --shadow: 0 1px 2px rgba(16,24,40,.04), 0 4px 16px rgba(16,24,40,.06);
+    --shadow-lg: 0 24px 64px rgba(16,24,40,.18);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0D1220; --surface: #151C30; --surface-2: #1A2239; --border: #263050;
+      --text: #E7EBF5; --muted: #9AA4BE; --faint: #6F7A96; --accent-soft: #3A2318;
+      --ok-soft: #12332A; --warn-soft: #382A0E; --err-soft: #3A1717; --ok: #6FD3A5; --warn: #F2C266; --err: #F09A9A;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0D1220; --surface: #151C30; --surface-2: #1A2239; --border: #263050;
+    --text: #E7EBF5; --muted: #9AA4BE; --faint: #6F7A96; --accent-soft: #3A2318;
+    --ok-soft: #12332A; --warn-soft: #382A0E; --err-soft: #3A1717; --ok: #6FD3A5; --warn: #F2C266; --err: #F09A9A;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); font-family: "Inter", "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; }
+  .i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  /* ---------- Buttons ---------- */
+  .btn { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 500; cursor: pointer; transition: background .15s, border-color .15s, transform .05s; white-space: nowrap; }
+  .btn:hover { background: var(--surface-2); }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+  .btn.icon { width: 36px; height: 36px; padding: 0; justify-content: center; }
+  .btn.sm { height: 30px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+  .btn.danger { color: var(--err); }
+  .btn:disabled { opacity: .55; cursor: default; }
+
+  /* ---------- Login ---------- */
+  #login { min-height: 100vh; display: grid; place-items: center; padding: 16px; background: radial-gradient(1200px 600px at 80% -10%, rgba(242,107,58,.18), transparent 60%), linear-gradient(160deg, #131A2E, #1E2A4A); }
+  .login-card { width: 100%; max-width: 400px; background: var(--surface); border-radius: 18px; padding: 36px 32px; box-shadow: var(--shadow-lg); }
+  .brand-mark { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, var(--accent), #F59A6B); display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 16px; letter-spacing: -.02em; flex: none; }
+  .login-card h1 { margin: 20px 0 4px; font-size: 22px; letter-spacing: -.02em; }
+  .login-card p { margin: 0 0 24px; color: var(--muted); }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--muted); }
+  .field input, .field textarea { width: 100%; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; outline: none; }
+  .field input { height: 42px; }
+  .field textarea { min-height: 72px; padding: 10px 12px; resize: vertical; }
+  .field input:focus, .field textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(242,107,58,.15); }
+  .login-card .btn { width: 100%; justify-content: center; height: 42px; margin-top: 6px; }
+  .alert { margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: var(--err-soft); color: var(--err); font-size: 13px; }
+
+  /* ---------- Shell ---------- */
+  .shell { display: grid; grid-template-columns: 252px 1fr; min-height: 100vh; }
+  aside.side { background: var(--navy-deep); color: #C4CCE0; padding: 22px 14px; display: flex; flex-direction: column; gap: 6px; position: sticky; top: 0; height: 100vh; }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 22px; }
+  .brand strong { display: block; color: #fff; font-size: 15px; letter-spacing: -.01em; }
+  .brand span { font-size: 12px; color: #8A94AE; }
+  .admin-tag { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; background: rgba(242,107,58,.2); color: #F7A07B; padding: 2px 6px; border-radius: 5px; margin-left: 6px; vertical-align: 2px; }
+  .nav-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #6E7894; padding: 14px 10px 6px; }
+  .nav { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; color: #C4CCE0; text-decoration: none; cursor: pointer; border: 0; background: none; width: 100%; text-align: left; font-weight: 500; position: relative; }
+  .nav:hover { background: rgba(255,255,255,.06); color: #fff; }
+  .nav.on { background: rgba(255,255,255,.09); color: #fff; }
+  .nav.on::before { content: ""; position: absolute; left: -14px; top: 9px; bottom: 9px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
+  .nav .badge { margin-left: auto; background: var(--accent); color: #fff; border-radius: 99px; font-size: 11px; padding: 1px 7px; font-weight: 600; }
+  .nav .badge:empty { display: none; }
+  .side-foot { margin-top: auto; padding: 14px 10px 0; border-top: 1px solid rgba(255,255,255,.08); display: flex; flex-direction: column; gap: 12px; }
+  .live { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #9AA4BE; }
+  .pulse { width: 8px; height: 8px; border-radius: 50%; background: #34C38F; box-shadow: 0 0 0 0 rgba(52,195,143,.6); animation: pulse 2.4s infinite; flex: none; }
+  .pulse.off { background: #E05555; animation: none; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(52,195,143,.55); } 70% { box-shadow: 0 0 0 8px rgba(52,195,143,0); } 100% { box-shadow: 0 0 0 0 rgba(52,195,143,0); } }
+  .user-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: #2A3658; color: #fff; display: grid; place-items: center; font-weight: 600; font-size: 13px; }
+  .user-row .who { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #E1E6F2; }
+  .user-row button { background: none; border: 0; color: #8A94AE; cursor: pointer; padding: 6px; border-radius: 8px; }
+  .user-row button:hover { color: #fff; background: rgba(255,255,255,.06); }
+
+  main { padding: 28px 32px 48px; min-width: 0; }
+  .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+  .page-head h1 { margin: 0; font-size: 26px; letter-spacing: -.025em; }
+  .page-head p { margin: 4px 0 0; color: var(--muted); }
+  .head-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* ---------- KPI ---------- */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; margin-bottom: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .kpi { padding: 18px 20px; display: flex; gap: 14px; align-items: flex-start; }
+  .kpi .ic { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; flex: none; }
+  .kpi .ic.a { background: #EEF1F8; color: var(--navy); }
+  .kpi .ic.b { background: var(--accent-soft); color: var(--accent); }
+  .kpi .ic.c { background: var(--ok-soft); color: var(--ok); }
+  .kpi .ic.d { background: var(--warn-soft); color: var(--warn); }
+  :root[data-theme="dark"] .kpi .ic.a { background: #222C48; color: #C9D3EE; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .kpi .ic.a { background: #222C48; color: #C9D3EE; } }
+  .kpi .lbl { font-size: 12.5px; color: var(--muted); font-weight: 500; }
+  .kpi .val { font-size: 28px; font-weight: 700; letter-spacing: -.03em; line-height: 1.15; margin-top: 2px; }
+  .kpi .sub { font-size: 12px; color: var(--faint); margin-top: 2px; }
+
+  /* ---------- Charts ---------- */
+  .charts { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+  .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 20px 0; }
+  .card-head h2 { margin: 0; font-size: 15px; letter-spacing: -.01em; }
+  .card-head p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+  .card-body { padding: 16px 20px 20px; }
+  .bars { display: flex; flex-direction: column; gap: 6px; }
+  .bar-row { display: grid; grid-template-columns: minmax(90px, 180px) 1fr 44px; align-items: center; gap: 14px; padding: 7px 8px; margin: 0 -8px; border-radius: 9px; border: 0; background: none; cursor: pointer; text-align: left; width: calc(100% + 16px); }
+  .bar-row:hover { background: var(--surface-2); }
+  .bar-row .name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .track { display: block; height: 10px; border-radius: 99px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--border); }
+  .fill { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--navy), #3A4F86); transition: width .6s cubic-bezier(.2,.8,.2,1); }
+  .bar-row:first-child .fill { background: linear-gradient(90deg, var(--accent), #F7A07B); }
+  .bar-row .num { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .bar-row .num small { color: var(--faint); font-weight: 500; margin-left: 2px; }
+  .donut-wrap { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; justify-content: center; }
+  .donut { width: 150px; height: 150px; border-radius: 50%; position: relative; flex: none; }
+  .donut::after { content: ""; position: absolute; inset: 22px; border-radius: 50%; background: var(--surface); }
+  .donut .center { position: absolute; inset: 0; display: grid; place-items: center; z-index: 1; text-align: center; }
+  .donut .center b { display: block; font-size: 26px; letter-spacing: -.03em; line-height: 1; }
+  .donut .center span { font-size: 11.5px; color: var(--muted); }
+  .legend { display: flex; flex-direction: column; gap: 8px; min-width: 140px; }
+  .legend div { display: flex; align-items: center; gap: 9px; font-size: 13px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .legend b { margin-left: auto; font-variant-numeric: tabular-nums; padding-left: 12px; }
+  .pipeline { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .empty { padding: 36px 20px; text-align: center; color: var(--muted); }
+
+  /* ---------- Tabelle ---------- */
+  .table-card .card-head { align-items: center; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+  .seg button { border: 0; background: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; color: var(--muted); font-weight: 500; font-size: 13px; }
+  .seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(16,24,40,.1); }
+  .seg button .n { margin-left: 6px; font-size: 11.5px; color: var(--faint); }
+  .search { position: relative; }
+  .search .i { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--faint); width: 16px; height: 16px; }
+  .search input { height: 36px; width: 240px; max-width: 100%; padding: 0 12px 0 34px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; outline: none; }
+  .search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(242,107,58,.12); }
+  .actionbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 20px; background: var(--accent-soft); border-bottom: 1px solid var(--border); font-weight: 500; }
+  .actionbar .grow { flex: 1; }
+  .table-scroll { overflow: auto; max-height: 68vh; border-radius: 0 0 var(--radius) var(--radius); }
+  table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
+  th { position: sticky; top: 0; z-index: 1; background: var(--surface-2); color: var(--muted); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; user-select: none; }
+  th[data-k] { cursor: pointer; }
+  th[data-k]:hover { color: var(--text); }
+  th .arr { margin-left: 4px; opacity: .5; }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: top; max-width: 360px; font-size: 13.5px; }
+  th.sel, td.sel { width: 40px; padding-right: 0; }
+  input.sel { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; margin: 2px 0 0; }
+  tbody tr[data-id] { cursor: pointer; }
+  tbody tr:hover td { background: var(--surface-2); }
+  tbody tr.chosen td { background: var(--accent-soft); }
+  tbody tr:last-child td { border-bottom: 0; }
+  tr.fresh td { background: var(--accent-soft) !important; transition: background 2.5s; }
+  td.num { font-weight: 600; font-variant-numeric: tabular-nums; }
+  td.tt { font-weight: 600; }
+  td .tsub { font-size: 12px; color: var(--faint); font-weight: 400; margin-top: 2px; }
+  td.faellig-bald { color: var(--accent-strong); font-weight: 600; }
+  td a { color: var(--accent-strong); }
+  .kat { display: inline-grid; place-items: center; min-width: 26px; height: 24px; padding: 0 7px; border-radius: 7px; font-weight: 700; font-size: 12px; color: #fff; }
+  .kat.A { background: var(--ka); } .kat.B { background: var(--kb); } .kat.C { background: var(--kc); }
+  .kat.vorl { opacity: .5; outline: 1.5px dashed currentColor; outline-offset: -1.5px; }
+  .kat.leer { background: var(--border); color: var(--muted); }
+  .grp { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 1px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent-strong); font-size: 11.5px; font-weight: 600; vertical-align: 1px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .p-ok { background: var(--ok-soft); color: var(--ok); }
+  .p-warn { background: var(--warn-soft); color: var(--warn); }
+  .p-err { background: var(--err-soft); color: var(--err); }
+  .p-acc { background: var(--accent-soft); color: var(--accent-strong); }
+  .p-n { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+  .liste { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .liste li { font-size: 13px; }
+  .liste li span { color: var(--faint); }
+  .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .table-foot { padding: 12px 20px; color: var(--faint); font-size: 12px; border-top: 1px solid var(--border); }
+  .muted { color: var(--faint); }
+
+  /* ---------- Drawer ---------- */
+  .backdrop { position: fixed; inset: 0; background: rgba(13,18,32,.35); backdrop-filter: blur(2px); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 20; }
+  .backdrop.open { opacity: 1; pointer-events: auto; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100vw); background: var(--surface); box-shadow: var(--shadow-lg); transform: translateX(102%); transition: transform .3s cubic-bezier(.2,.8,.2,1); z-index: 21; display: flex; flex-direction: column; }
+  .drawer.open { transform: translateX(0); }
+  .d-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--border); }
+  .d-head .ic { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex: none; }
+  .d-head .t { flex: 1; min-width: 0; }
+  .d-head .t strong { display: block; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .d-head .t span { font-size: 12.5px; color: var(--muted); }
+  .d-msgs { flex: 1; overflow-y: auto; padding: 22px 18px; display: flex; flex-direction: column; gap: 14px; background: var(--bg); }
+  .d-msgs.panels { gap: 0; }
+  .msg { max-width: 88%; display: flex; flex-direction: column; gap: 4px; }
+  .msg.me { align-self: flex-end; align-items: flex-end; }
+  .msg.bot { max-width: 100%; }
+  .msg .bubble { padding: 11px 14px; border-radius: 14px; font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+  .msg.me .bubble { background: var(--navy); color: #fff; border-bottom-right-radius: 4px; white-space: pre-wrap; }
+  .msg.bot .bubble { background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+  .msg.err .bubble { background: var(--err-soft); color: var(--err); border-color: transparent; }
+  .msg time { font-size: 11px; color: var(--faint); padding: 0 4px; }
+  .bubble > :first-child { margin-top: 0; } .bubble > :last-child { margin-bottom: 0; }
+  .bubble p { margin: 0 0 8px; }
+  .bubble h1, .bubble h2, .bubble h3, .bubble h4 { font-size: 14.5px; margin: 14px 0 6px; }
+  .bubble ul, .bubble ol { margin: 4px 0 8px; padding-left: 20px; }
+  .bubble hr { border: 0; border-top: 1px solid var(--border); margin: 12px 0; }
+  .bubble table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 8px 0; display: block; overflow-x: auto; }
+  .bubble th, .bubble td { overflow-wrap: normal; word-break: normal; border: 1px solid var(--border); padding: 6px 8px; position: static; text-transform: none; letter-spacing: 0; font-size: 12.5px; max-width: none; cursor: default; }
+  .bubble th { background: var(--surface-2); color: var(--text); }
+  .bubble code { background: var(--surface-2); padding: 1px 5px; border-radius: 5px; font-size: 12.5px; }
+  .bubble a { color: var(--accent-strong); }
+  .typing { align-self: flex-start; display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+  .dots { display: inline-flex; gap: 4px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; border-bottom-left-radius: 4px; }
+  .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); animation: blink 1.2s infinite; }
+  .dots i:nth-child(2) { animation-delay: .2s; } .dots i:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
+  .d-empty { margin: auto 0; text-align: center; padding: 20px 10px; }
+  .d-empty .ic { width: 56px; height: 56px; border-radius: 16px; margin: 0 auto 16px; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--border); color: var(--accent); box-shadow: var(--shadow); }
+  .d-empty .ic .i { width: 24px; height: 24px; }
+  .d-empty h3 { margin: 0 0 6px; font-size: 16px; }
+  .d-empty p { margin: 0 auto; color: var(--muted); max-width: 360px; }
+  .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 18px; }
+  .chip { border: 1px solid var(--border); background: var(--surface); border-radius: 99px; padding: 7px 13px; cursor: pointer; font-size: 13px; color: var(--text); }
+  .chip:hover { border-color: var(--accent); color: var(--accent-strong); }
+  .composer { border-top: 1px solid var(--border); padding: 14px 16px 12px; background: var(--surface); }
+  .input-box { display: flex; align-items: flex-end; gap: 10px; border: 1px solid var(--border); border-radius: 14px; padding: 8px 8px 8px 14px; background: var(--surface-2); transition: border-color .15s, box-shadow .15s; }
+  .input-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(242,107,58,.12); background: var(--surface); }
+  .input-box textarea { flex: 1; border: 0; outline: none; resize: none; background: transparent; color: var(--text); font: inherit; font-size: 14px; line-height: 1.5; max-height: 200px; padding: 6px 0; }
+  .send { width: 38px; height: 38px; border-radius: 11px; border: 0; background: var(--accent); color: #fff; display: grid; place-items: center; cursor: pointer; flex: none; }
+  .send:hover { background: var(--accent-strong); }
+  .send:disabled { background: var(--border); color: var(--faint); cursor: default; }
+  .hint { font-size: 11.5px; color: var(--faint); margin-top: 8px; padding-left: 4px; }
+
+  /* ---------- Detail & Zusammenführen ---------- */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+  .panel h3 { margin: 0 0 10px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .kopf { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .kopf strong { font-size: 20px; letter-spacing: -.02em; }
+  .kv { display: grid; grid-template-columns: 130px 1fr; gap: 6px 12px; margin: 0; font-size: 13.5px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; overflow-wrap: anywhere; }
+  .panel a { color: var(--accent-strong); }
+  .grund { display: flex; gap: 10px; align-items: baseline; padding: 3px 0; font-size: 13.5px; }
+  .grund b { min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+  .grund b.plus { color: var(--ok); }
+  .summe { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 6px; font-weight: 600; }
+  pre.notiz { white-space: pre-wrap; font: inherit; font-size: 13.5px; margin: 0; background: var(--surface-2); border-radius: 8px; padding: 10px 12px; }
+  .hinweis { font-size: 12.5px; color: var(--muted); background: var(--surface-2); border: 1px dashed var(--border); border-radius: 8px; padding: 8px 10px; margin-top: 8px; }
+  .mitglied { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .mitglied:last-child { border-bottom: 0; }
+  .mitglied .wer { min-width: 0; }
+  .mitglied .wer div { font-size: 12px; color: var(--faint); }
+  .wahl { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; cursor: pointer; background: var(--surface); }
+  .wahl:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .wahl input { margin-top: 3px; accent-color: var(--accent); }
+  .wahl div span { display: block; font-size: 12px; color: var(--faint); }
+  .d-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+
+  /* ---------- Meldung ---------- */
+  .toast { position: fixed; right: 20px; bottom: 20px; z-index: 40; max-width: 380px; padding: 12px 16px; border-radius: 12px; box-shadow: var(--shadow-lg); background: var(--surface); border: 1px solid var(--border); border-left-width: 4px; transform: translateY(20px); opacity: 0; transition: transform .25s, opacity .25s; pointer-events: none; }
+  .toast.show { transform: none; opacity: 1; }
+  .toast.ok { border-left-color: var(--ok); }
+  .toast.err { border-left-color: var(--err); color: var(--err); }
+
+  /* ---------- Responsiv ---------- */
+  @media (max-width: 1100px) { .charts { grid-template-columns: 1fr; } }
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: 1fr; }
+    aside.side { position: static; height: auto; flex-direction: row; align-items: center; flex-wrap: wrap; padding: 12px 16px; gap: 4px; }
+    .brand { padding: 0 8px 0 0; margin-right: auto; }
+    .brand span, .nav-label, .nav .lbl { display: none; }
+    .nav { width: auto; padding: 9px; }
+    .nav.on::before { display: none; }
+    .side-foot { margin: 0; padding: 0; border: 0; flex-direction: row; align-items: center; }
+    .side-foot .live span, .user-row .who span { display: none; }
+    main { padding: 20px 16px 40px; }
+    .search input { width: 100%; }
+    .tools, .search { width: 100%; }
+    .kv { grid-template-columns: 1fr; gap: 0 12px; }
+    .kv dd { margin-bottom: 6px; }
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-dash" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 12h7M9 16h5"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 4.6 4.6 1.9-4.6 1.9L12 16l-1.9-4.6-4.6-1.9 4.6-1.9z"/><path d="M19 15l.8 2.2 2.2.8-2.2.8L19 21l-.8-2.2-2.2-.8 2.2-.8z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18.5 14.8c1.6.9 2.6 2.6 3 5.2"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-6"/></symbol>
+</svg>
+
+<!-- ======================= Anmeldung ======================= -->
+<div id="login" hidden>
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <div class="brand-mark">TT</div>
+    <h1>Messe Hub · Admin</h1>
+    <p>Train Today · Vertrieb. Bitte melde dich an.</p>
+    <div class="field"><label for="user">Benutzer</label><input id="user" name="username" autocomplete="username" required></div>
+    <div class="field"><label for="pw">Passwort</label><input id="pw" name="password" type="password" autocomplete="current-password" required></div>
+    <button class="btn primary" type="submit">Anmelden</button>
+    <div class="alert" id="loginErr" hidden></div>
+  </form>
+</div>
+
+<!-- ======================= Dashboard ======================= -->
+<div class="shell" id="app" hidden>
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">TT</div>
+      <div><strong>Messe Hub<span class="admin-tag">Admin</span></strong><span>Train Today · Vertrieb</span></div>
+    </div>
+    <div class="nav-label">Übersicht</div>
+    <button class="nav on" type="button" data-go="top"><svg class="i"><use href="#i-dash"/></svg><span class="lbl">Dashboard</span></button>
+    <button class="nav" type="button" data-go="tabelle" data-tab="alle"><svg class="i"><use href="#i-db"/></svg><span class="lbl">Lead-Datenbank</span></button>
+    <button class="nav" type="button" data-go="tabelle" data-tab="duplikate"><svg class="i"><use href="#i-copy"/></svg><span class="lbl">Duplikate</span><span class="badge" id="navDup"></span></button>
+    <div class="nav-label">Werkzeuge</div>
+    <button class="nav" type="button" data-chat="erfassen"><svg class="i"><use href="#i-note"/></svg><span class="lbl">Lead erfassen</span></button>
+    <button class="nav" type="button" data-chat="assistent"><svg class="i"><use href="#i-spark"/></svg><span class="lbl">Lead-Assistent</span></button>
+    <div class="side-foot">
+      <div class="live"><i class="pulse" id="pulse"></i><span id="liveText">Verbinde …</span></div>
+      <div class="user-row">
+        <div class="who"><div class="avatar" id="avatar">A</div><span id="whoName"></span></div>
+        <button type="button" id="logoutBtn" title="Abmelden"><svg class="i"><use href="#i-out"/></svg></button>
+      </div>
+    </div>
+  </aside>
+
+  <main id="top">
+    <div class="page-head">
+      <div>
+        <h1>Dashboard</h1>
+        <p id="pageSub">Überblick über alle Messe-Leads</p>
+      </div>
+      <div class="head-actions">
+        <button class="btn" type="button" data-chat="assistent"><svg class="i"><use href="#i-spark"/></svg>Assistent fragen</button>
+        <button class="btn primary" type="button" data-chat="erfassen"><svg class="i"><use href="#i-plus"/></svg>Neuer Lead</button>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="card kpi"><div class="ic a"><svg class="i"><use href="#i-users"/></svg></div><div><div class="lbl">Leads gesamt</div><div class="val" id="kGesamt">–</div><div class="sub" id="kGesamtSub">&nbsp;</div></div></div>
+      <div class="card kpi"><div class="ic b"><svg class="i"><use href="#i-flag"/></svg></div><div><div class="lbl">A-Leads (heiß)</div><div class="val" id="kA">–</div><div class="sub" id="kASub">&nbsp;</div></div></div>
+      <div class="card kpi"><div class="ic c"><svg class="i"><use href="#i-gauge"/></svg></div><div><div class="lbl">Ø Punkte</div><div class="val" id="kSchnitt">–</div><div class="sub" id="kSchnittSub">&nbsp;</div></div></div>
+      <div class="card kpi"><div class="ic d"><svg class="i"><use href="#i-copy"/></svg></div><div><div class="lbl">Mögliche Duplikate</div><div class="val" id="kDup">–</div><div class="sub" id="kDupSub">&nbsp;</div></div></div>
+      <div class="card kpi"><div class="ic a"><svg class="i"><use href="#i-cal"/></svg></div><div><div class="lbl">Fällig in 14 Tagen</div><div class="val" id="kFaellig">–</div><div class="sub" id="kFaelligSub">&nbsp;</div></div></div>
+    </div>
+
+    <div class="charts">
+      <div class="card">
+        <div class="card-head"><div><h2>Leads nach Trainingsinteresse</h2><p>Anzahl je Schulungsthema · Klick filtert die Tabelle</p></div></div>
+        <div class="card-body"><div class="bars" id="interestBars"><div class="empty">Lade Daten …</div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><h2>Leads nach Kategorie</h2><p>A heiß · B warm · C kalt</p></div></div>
+        <div class="card-body" id="katBox"><div class="empty">Lade Daten …</div></div>
+      </div>
+    </div>
+
+    <div class="card table-card" id="tabelle">
+      <div class="card-head">
+        <div><h2>Lead-Datenbank</h2><p>Alle Leads aus Sergiis Neon-Datenbank · Zusammenführungen aus dem Messe-Hub</p></div>
+        <div class="tools">
+          <div class="seg" id="tabs"></div>
+          <div class="search"><svg class="i"><use href="#i-search"/></svg><input type="search" id="search" placeholder="Suchen …"></div>
+          <button class="btn icon" type="button" id="refreshBtn" title="Jetzt aktualisieren"><svg class="i"><use href="#i-refresh"/></svg></button>
+        </div>
+      </div>
+      <div class="actionbar" id="actionbar" hidden>
+        <span id="auswahlText"></span><span class="grow"></span>
+        <button class="btn sm primary" type="button" id="mergeBtn"><svg class="i"><use href="#i-link"/></svg>Zusammenführen</button>
+        <button class="btn sm" type="button" id="clearSel">Auswahl aufheben</button>
+      </div>
+      <div class="table-scroll" id="tableBox"><div class="empty">Lade Daten …</div></div>
+      <div class="table-foot" id="tableFoot"></div>
+    </div>
+  </main>
+</div>
+
+<!-- ======================= Seitenleiste (Chat, Details, Zusammenführen) ======================= -->
+<div class="backdrop" id="backdrop"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="d-head">
+    <div class="ic" id="dIcon"><svg class="i"><use href="#i-note"/></svg></div>
+    <div class="t"><strong id="dTitle"></strong><span id="dSub"></span></div>
+    <button class="btn icon" type="button" id="newChat" title="Neues Gespräch"><svg class="i"><use href="#i-plus"/></svg></button>
+    <button class="btn icon" type="button" id="closeDrawer" title="Schließen"><svg class="i"><use href="#i-x"/></svg></button>
+  </div>
+  <div class="d-msgs" id="msgs"></div>
+  <div class="composer" id="composer">
+    <form class="input-box" id="chatForm">
+      <textarea id="chatInput" rows="1"></textarea>
+      <button class="send" type="submit" id="sendBtn" title="Senden"><svg class="i"><use href="#i-send"/></svg></button>
+    </form>
+    <div class="hint">Enter zum Senden · Shift + Enter für eine neue Zeile</div>
+  </div>
+</aside>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const store = {
+    get(k) { try { return JSON.parse(sessionStorage.getItem(k)); } catch { return null; } },
+    set(k, v) { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, JSON.stringify(v)); } catch {} }
+  };
+  const fest = !!CONFIG.passwort && CONFIG.passwort !== '__PASSWORT__';
+  let auth = null;
+
+  // All webhook paths hang off CONFIG.n8nUrl, so another n8n instance only needs that one line changed.
+  const voll = (p) => /^https?:\/\//.test(p) ? p : String(CONFIG.n8nUrl || '').replace(/\/+$/, '') + p;
+  CONFIG.datenUrl = voll(CONFIG.datenUrl);
+  CONFIG.gruppenUrl = voll(CONFIG.gruppenUrl);
+  Object.values(CONFIG.chats).forEach((c) => { c.url = voll(c.url); });
+
+  /* ================= Verbindung zu n8n ================= */
+  function authHeader() {
+    const raw = auth.user + ':' + auth.pw;
+    return 'Basic ' + btoa(String.fromCharCode(...new TextEncoder().encode(raw)));
+  }
+
+  async function request(url, opts = {}) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), opts.timeout || 30000);
+    let res;
+    try {
+      res = await fetch(url, { method: opts.method || 'GET', body: opts.body, signal: ctrl.signal, cache: 'no-store',
+        headers: Object.assign({ Authorization: authHeader() }, opts.headers || {}) });
+    } catch (e) {
+      throw new Error(e.name === 'AbortError' ? 'Zeitüberschreitung – n8n hat nicht rechtzeitig geantwortet.' : 'Keine Verbindung zu n8n. Ist der Workflow aktiv und der Zugang hinterlegt?');
+    } finally { clearTimeout(timer); }
+    if (res.status === 401 || res.status === 403) throw Object.assign(new Error('Zugriff verweigert – Benutzer oder Passwort stimmen nicht mit „Messe-Hub Login“ in n8n überein.'), { auth: true });
+    if (res.status === 404) throw new Error('Workflow nicht gefunden (404) – bitte in n8n aktivieren.');
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = { output: text }; }
+    if (!res.ok) throw new Error((data && (data.fehler || data.message)) || 'n8n meldet einen Fehler (' + res.status + ').');
+    return data;
+  }
+
+  /* ================= Anmeldung ================= */
+  async function start() {
+    auth = fest ? { user: CONFIG.benutzer, pw: CONFIG.passwort } : store.get('messeAdminLogin');
+    if (!auth) return showLogin();
+    showApp();
+    laden();
+  }
+
+  function showLogin(msg) {
+    $('app').hidden = true;
+    $('login').hidden = false;
+    $('user').value = CONFIG.benutzer;
+    $('loginErr').hidden = !msg;
+    $('loginErr').textContent = msg || '';
+    ($('user').value ? $('pw') : $('user')).focus();
+  }
+
+  $('loginForm').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const btn = ev.submitter || ev.target.querySelector('button');
+    btn.disabled = true; btn.textContent = 'Prüfe …';
+    auth = { user: $('user').value.trim(), pw: $('pw').value };
+    try {
+      const d = await request(CONFIG.datenUrl);
+      store.set('messeAdminLogin', auth);
+      showApp(); render(d);
+    } catch (e) {
+      $('loginErr').hidden = false; $('loginErr').textContent = e.message;
+    } finally { btn.disabled = false; btn.textContent = 'Anmelden'; }
+  });
+
+  $('logoutBtn').addEventListener('click', () => {
+    if (fest) { alert('Das Passwort ist fest in dieser Datei hinterlegt.\nZum Abmelden in der Datei bei „passwort“ den Wert leeren: passwort: \'\''); return; }
+    store.set('messeAdminLogin', null);
+    location.reload();
+  });
+
+  function showApp() {
+    $('login').hidden = true;
+    $('app').hidden = false;
+    $('whoName').textContent = auth.user;
+    $('avatar').textContent = (auth.user[0] || 'A').toUpperCase();
+    planeAktualisierung();
+  }
+
+  /* ================= Navigation ================= */
+  document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.nav[data-go]').forEach((n) => n.classList.toggle('on', n === b));
+    if (b.dataset.tab) { aktiverTab = b.dataset.tab; sortierung = { spalte: null, auf: true }; tabsZeichnen(); tabelle(); }
+    if (b.dataset.go === 'top') window.scrollTo({ top: 0, behavior: 'smooth' });
+    else $(b.dataset.go).scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
+  document.querySelectorAll('[data-chat]').forEach((b) => b.addEventListener('click', () => openChat(b.dataset.chat)));
+
+  /* ================= Daten ================= */
+  let daten = { leads: [], gruppen: [], vorschlaege: [], verlauf: [] };
+  let geladen = false;
+  let aktiverTab = 'alle';
+  let sortierung = { spalte: null, auf: true };
+  let auswahl = new Set();
+  let sichtbar = [];
+  let bekannt = new Set();
+  let ersterAufbau = true;
+
+  const KAT = { A: 'A · heiß', B: 'B · warm', C: 'C · kalt' };
+  const FARBE = (k) => getComputedStyle(document.documentElement).getPropertyValue(k === 'A' ? '--ka' : k === 'B' ? '--kb' : '--kc').trim();
+  const AKTION = { zusammengefuehrt: 'Zusammengeführt', getrennt: 'Getrennt', herausgeloest: 'Herausgelöst', ignoriert: 'Kein Duplikat' };
+  const datum = (d) => d ? new Date(String(d).length === 10 ? d + 'T12:00:00' : d).toLocaleDateString('de-DE') : '–';
+  const zeit = (iso) => iso ? new Date(iso).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '–';
+  const tageBis = (d) => d ? Math.round((new Date(d + 'T12:00:00') - new Date(new Date().toDateString() + ' 12:00')) / 86400000) : null;
+  const kurzId = (id) => String(id || '').slice(0, 13) + '…';
+  const leadVon = (id) => daten.leads.find((l) => l.lead_id === id);
+
+  // A merged group is shown as one row (its main lead); members stay reachable in the detail view.
+  function einheiten() {
+    const proGruppe = new Map();
+    daten.leads.forEach((l) => { if (l.gruppe_id) { if (!proGruppe.has(l.gruppe_id)) proGruppe.set(l.gruppe_id, []); proGruppe.get(l.gruppe_id).push(l); } });
+    return daten.leads.filter((l) => !l.gruppe_id || l.haupt).map((l) => Object.assign({}, l, { mitglieder: l.gruppe_id ? proGruppe.get(l.gruppe_id) : [l] }));
+  }
+
+  function render(d) {
+    daten = { leads: d.leads || [], gruppen: d.gruppen || [], vorschlaege: d.vorschlaege || [], verlauf: d.verlauf || [], aktualisiert: d.aktualisiert };
+    geladen = true;
+    const ids = new Set(einheiten().map((e) => e.lead_id));
+    auswahl = new Set([...auswahl].filter((id) => ids.has(id)));
+    dashboard();
+    tabsZeichnen();
+    tabelle();
+    auswahlLeiste();
+    $('navDup').textContent = daten.vorschlaege.length || '';
+    const stand = new Date(d.aktualisiert || Date.now());
+    status(true, 'Live · ' + stand.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    $('pageSub').textContent = 'Überblick über alle Messe-Leads · Stand ' + stand.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
+    if (modus === 'detail' && $('drawer').classList.contains('open') && detailId) openDetail(detailId, true);
+  }
+
+  function zaehlen(werte) {
+    const m = new Map();
+    werte.forEach((w) => { const k = w || 'Ohne Angabe'; m.set(k, (m.get(k) || 0) + 1); });
+    return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'de'));
+  }
+
+  function dashboard() {
+    const e = einheiten();
+    const gesamt = e.length;
+    const k = { A: 0, B: 0, C: 0 };
+    e.forEach((l) => { if (k[l.kategorie] !== undefined) k[l.kategorie]++; });
+    const schnitt = gesamt ? Math.round(e.reduce((s, l) => s + (Number(l.score) || 0), 0) / gesamt) : 0;
+    const heute = new Date().toDateString();
+    const neuHeute = daten.leads.filter((l) => l.erfasst && new Date(l.erfasst).toDateString() === heute).length;
+    const bald = e.filter((l) => { const t = tageBis(l.faellig_am); return t !== null && t >= 0 && t <= 14; });
+    const naechster = [...bald].sort((a, b) => a.faellig_am.localeCompare(b.faellig_am))[0];
+    const zusammengefuehrt = daten.leads.length - gesamt;
+
+    $('kGesamt').textContent = gesamt;
+    $('kGesamtSub').textContent = neuHeute ? '+' + neuHeute + ' heute erfasst' : zusammengefuehrt ? daten.leads.length + ' Einträge · ' + zusammengefuehrt + ' zusammengeführt' : 'in Sergiis Datenbank';
+    $('kA').textContent = k.A;
+    $('kASub').textContent = gesamt ? Math.round(k.A / gesamt * 100) + ' % aller Leads' : '–';
+    $('kSchnitt').textContent = gesamt ? schnitt : '–';
+    $('kSchnittSub').textContent = gesamt ? 'von 100 · B: ' + k.B + ' · C: ' + k.C : '–';
+    $('kDup').textContent = daten.vorschlaege.length;
+    $('kDupSub').textContent = daten.vorschlaege.length ? 'bitte prüfen' : 'keine offen';
+    $('kFaellig').textContent = bald.length;
+    $('kFaelligSub').textContent = naechster ? 'Nächster: ' + naechster.firma.split(' ')[0] + ', ' + datum(naechster.faellig_am) : 'nichts dringend';
+
+    const themen = zaehlen(e.map((l) => l.interesse));
+    const max = themen.length ? themen[0][1] : 1;
+    $('interestBars').innerHTML = themen.length ? themen.map(([name, n]) =>
+      '<button class="bar-row" type="button" data-topic="' + esc(name === 'Ohne Angabe' ? '' : name) + '" title="Tabelle nach „' + esc(name) + '“ filtern">' +
+      '<span class="name">' + esc(name) + '</span>' +
+      '<span class="track"><span class="fill" style="width:' + (n / max * 100).toFixed(1) + '%"></span></span>' +
+      '<span class="num">' + n + '<small>' + Math.round(n / gesamt * 100) + '%</small></span></button>'
+    ).join('') : '<div class="empty">Noch keine Leads. Erfasse den ersten über „Neuer Lead“.</div>';
+
+    if (!gesamt) { $('katBox').innerHTML = '<div class="empty">Keine Daten.</div>'; return; }
+    let start = 0;
+    const segmente = ['A', 'B', 'C'].filter((x) => k[x]).map((x) => {
+      const ende = start + k[x] / gesamt * 360;
+      const s = FARBE(x) + ' ' + start.toFixed(2) + 'deg ' + ende.toFixed(2) + 'deg';
+      start = ende; return s;
+    });
+    const pipe = zaehlen(daten.leads.map((l) => l.verarbeitung));
+    $('katBox').innerHTML =
+      '<div class="donut-wrap"><div class="donut" style="background:conic-gradient(' + (segmente.join(',') || 'var(--border) 0deg 360deg') + ')">' +
+      '<div class="center"><div><b>' + gesamt + '</b><span>Leads</span></div></div></div>' +
+      '<div class="legend">' + ['A', 'B', 'C'].map((x) => '<div><i style="background:' + FARBE(x) + '"></i>' + KAT[x] + '<b>' + k[x] + '</b></div>').join('') + '</div></div>' +
+      '<div class="pipeline" title="Stand der Verarbeitung in Sergiis Workflow">' + pipe.map(([n, c]) => verarbeitungPill(n, ' ' + c)).join('') + '</div>';
+  }
+
+  $('interestBars').addEventListener('click', (ev) => {
+    const b = ev.target.closest('.bar-row');
+    if (!b) return;
+    aktiverTab = 'alle'; sortierung = { spalte: null, auf: true };
+    $('search').value = b.dataset.topic;
+    tabsZeichnen(); tabelle();
+    $('tabelle').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  /* ================= Kennzeichnungen ================= */
+  function katPill(l) {
+    if (!l.kategorie) return '<span class="kat leer">–</span>';
+    return '<span class="kat ' + esc(l.kategorie) + (l.vorlaeufig ? ' vorl' : '') + '" title="' + esc(KAT[l.kategorie] + (l.vorlaeufig ? ' (vorläufig)' : '')) + '">' + esc(l.kategorie) + '</span>';
+  }
+  function verarbeitungPill(v, extra) {
+    if (!v) return '<span class="pill p-n">–</span>';
+    const c = /fehler/i.test(v) ? 'p-err' : /fertig/i.test(v) ? 'p-ok' : /bearbeitung/i.test(v) ? 'p-acc' : 'p-n';
+    return '<span class="pill ' + c + '">' + esc(v) + esc(extra || '') + '</span>';
+  }
+  function emailPill(v) {
+    if (!v) return '<span class="pill p-n">–</span>';
+    const c = /fehlgeschlagen/i.test(v) ? 'p-err' : /gesendet/i.test(v) && !/wird/i.test(v) ? 'p-ok' : /unklar/i.test(v) ? 'p-warn' : 'p-n';
+    return '<span class="pill ' + c + '">' + esc(v) + '</span>';
+  }
+  function duplikatPill(v) {
+    if (!v) return '<span class="pill p-n">–</span>';
+    const c = /möglich/i.test(v) ? 'p-warn' : /bekannt/i.test(v) ? 'p-acc' : 'p-n';
+    return '<span class="pill ' + c + '">' + esc(v) + '</span>';
+  }
+
+  /* ================= Tabelle ================= */
+  const TABS = [['alle', 'Alle Leads'], ['duplikate', 'Duplikate'], ['gruppen', 'Zusammengeführt'], ['verlauf', 'Verlauf']];
+  function anzahl(tab) {
+    return tab === 'alle' ? einheiten().length : tab === 'duplikate' ? daten.vorschlaege.length : tab === 'gruppen' ? daten.gruppen.length : daten.verlauf.length;
+  }
+  function tabsZeichnen() {
+    $('tabs').innerHTML = TABS.map(([k, t]) =>
+      '<button type="button" class="' + (k === aktiverTab ? 'on' : '') + '" data-tab="' + k + '">' + t + '<span class="n">' + anzahl(k) + '</span></button>').join('');
+  }
+  $('tabs').addEventListener('click', (ev) => {
+    const b = ev.target.closest('button[data-tab]');
+    if (!b) return;
+    aktiverTab = b.dataset.tab; sortierung = { spalte: null, auf: true }; $('search').value = '';
+    tabsZeichnen(); tabelle();
+  });
+
+  const SPALTEN = [
+    { k: 'kategorie', t: 'Lead' }, { k: 'score', t: 'Punkte' }, { k: 'firma', t: 'Firma' }, { k: 'kontakt', t: 'Kontakt' },
+    { k: 'interesse', t: 'Training' }, { k: 'budget', t: 'Budget' }, { k: 'faellig_am', t: 'Fällig' }, { k: 'verarbeitung', t: 'Verarbeitung' },
+    { k: 'email_status', t: 'E-Mail' }, { k: 'duplikat', t: 'Duplikat' }, { k: 'erfasst', t: 'Erfasst' }
+  ];
+
+  function tabelle() {
+    if (!geladen) return;
+    const q = $('search').value.trim().toLowerCase();
+    if (aktiverTab === 'duplikate') tabelleDuplikate(q);
+    else if (aktiverTab === 'gruppen') tabelleGruppen(q);
+    else if (aktiverTab === 'verlauf') tabelleVerlauf(q);
+    else tabelleAlle(q);
+  }
+
+  function zeigen(html, fuss) {
+    const box = $('tableBox');
+    const pos = [box.scrollTop, box.scrollLeft];
+    box.innerHTML = html;
+    box.scrollTop = pos[0]; box.scrollLeft = pos[1];
+    $('tableFoot').textContent = fuss + ' · aktualisiert sich automatisch alle ' + CONFIG.aktualisierenSek + ' Sekunden';
+  }
+  const suchtext = (l) => [l.firma, l.kontakt, l.email, l.telefon, l.interesse, l.budget, l.notiz, l.lead_id, l.naechster_schritt, l.duplikat, l.verarbeitung].join(' ').toLowerCase();
+
+  function tabelleAlle(q) {
+    const alle = einheiten();
+    let zeilen = q ? alle.filter((e) => e.mitglieder.some((l) => suchtext(l).includes(q))) : alle.slice();
+    const s = sortierung.spalte;
+    zeilen.sort((a, b) => {
+      if (s === null) return (b.score ?? -1) - (a.score ?? -1) || String(b.erfasst).localeCompare(String(a.erfasst));
+      const x = a[s] ?? '', y = b[s] ?? '';
+      const r = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'de');
+      return sortierung.auf ? r : -r;
+    });
+    sichtbar = zeilen.map((e) => e.lead_id);
+
+    const html = ['<table><thead><tr><th class="sel"><input type="checkbox" class="sel" id="selAll" title="Alle sichtbaren auswählen"' + (sichtbar.length && sichtbar.every((id) => auswahl.has(id)) ? ' checked' : '') + '></th>'];
+    SPALTEN.forEach((c) => html.push('<th data-k="' + c.k + '">' + c.t + '<span class="arr">' + (s === c.k ? (sortierung.auf ? '↑' : '↓') : '') + '</span></th>'));
+    html.push('</tr></thead><tbody>');
+    if (!zeilen.length) html.push('<tr><td colspan="' + (SPALTEN.length + 1) + '"><div class="empty">' + (q ? 'Keine Treffer für „' + esc(q) + '“.' : 'Noch keine Leads in Sergiis Datenbank. Erfasse den ersten über „Neuer Lead“.') + '</div></td></tr>');
+    const neu = new Set();
+    zeilen.forEach((l) => {
+      neu.add(l.lead_id);
+      const frisch = !ersterAufbau && !bekannt.has(l.lead_id);
+      const t = tageBis(l.faellig_am);
+      const cls = [frisch ? 'fresh' : '', auswahl.has(l.lead_id) ? 'chosen' : ''].filter(Boolean).join(' ');
+      html.push('<tr data-id="' + esc(l.lead_id) + '"' + (cls ? ' class="' + cls + '"' : '') + '>' +
+        '<td class="sel"><input type="checkbox" class="sel" data-id="' + esc(l.lead_id) + '"' + (auswahl.has(l.lead_id) ? ' checked' : '') + ' title="Auswählen"></td>' +
+        '<td>' + katPill(l) + '</td>' +
+        '<td class="num">' + (l.score ?? '–') + (l.vorlaeufig ? '<div class="tsub">vorläufig</div>' : '') + '</td>' +
+        '<td class="tt">' + esc(l.firma) + (l.mitglieder.length > 1 ? '<span class="grp" title="Zusammengeführt aus ' + l.mitglieder.length + ' Einträgen">🔗 ' + l.mitglieder.length + '</span>' : '') + '</td>' +
+        '<td>' + esc(l.kontakt || '–') + (l.email ? '<div class="tsub">' + esc(l.email) + '</div>' : '') + '</td>' +
+        '<td>' + esc(l.interesse || '–') + '</td>' +
+        '<td>' + esc(l.budget || '–') + '</td>' +
+        '<td' + (t !== null && t >= 0 && t <= 14 ? ' class="faellig-bald"' : '') + '>' + datum(l.faellig_am) + (t !== null && t >= 0 ? '<div class="tsub">in ' + t + ' Tagen</div>' : t !== null && t < 0 ? '<div class="tsub">überfällig</div>' : '') + '</td>' +
+        '<td>' + verarbeitungPill(l.verarbeitung) + '</td>' +
+        '<td>' + emailPill(l.email_status) + '</td>' +
+        '<td>' + duplikatPill(l.duplikat) + '</td>' +
+        '<td>' + esc(zeit(l.erfasst)) + '</td></tr>');
+    });
+    html.push('</tbody></table>');
+    zeigen(html.join(''), zeilen.length + ' von ' + alle.length + ' Leads' + (q ? ' · gefiltert nach „' + $('search').value.trim() + '“' : '') + ' · Klick auf eine Zeile zeigt alle Details · Häkchen setzen zum Zusammenführen');
+    neu.forEach((k) => bekannt.add(k));
+    ersterAufbau = false;
+    setTimeout(() => $('tableBox').querySelectorAll('tr.fresh').forEach((tr) => tr.classList.remove('fresh')), 5000);
+  }
+
+  function leadListe(ids) {
+    return '<ul class="liste">' + ids.map((id) => {
+      const l = leadVon(id);
+      return l ? '<li>' + esc(l.kontakt || 'Ohne Kontakt') + ' <span>· ' + esc(datum(l.erfasst)) + ' · ' + esc(kurzId(id)) + '</span></li>' : '<li><span>' + esc(kurzId(id)) + '</span></li>';
+    }).join('') + '</ul>';
+  }
+
+  function tabelleDuplikate(q) {
+    let zeilen = daten.vorschlaege.slice();
+    if (q) zeilen = zeilen.filter((v) => (v.firma + ' ' + v.gruende.join(' ') + ' ' + v.lead_ids.map((id) => suchtext(leadVon(id) || {})).join(' ')).toLowerCase().includes(q));
+    const html = ['<table><thead><tr><th>Firma</th><th>Einträge</th><th>Gründe</th><th>Sicherheit</th><th>Aktion</th></tr></thead><tbody>'];
+    if (!zeilen.length) html.push('<tr><td colspan="5"><div class="empty">' + (q ? 'Keine Treffer.' : 'Keine offenen Duplikat-Vorschläge. Gleiche Firmen werden hier automatisch erkannt.') + '</div></td></tr>');
+    zeilen.forEach((v) => html.push('<tr>' +
+      '<td class="tt">' + esc(v.firma) + '</td>' +
+      '<td>' + leadListe(v.lead_ids) + '</td>' +
+      '<td>' + v.gruende.map((g) => '<span class="pill ' + (/kontakt/i.test(g) ? 'p-warn' : /sergii/i.test(g) ? 'p-acc' : 'p-n') + '">' + esc(g) + '</span>').join(' ') + '</td>' +
+      '<td>' + (v.sicherheit === 'hoch' ? '<span class="pill p-warn">hoch</span>' : '<span class="pill p-n">mittel</span>') + '</td>' +
+      '<td><div class="row-actions"><button class="btn sm primary" type="button" data-act="vorschlag-merge" data-key="' + esc(v.schluessel) + '">Zusammenführen</button>' +
+      '<button class="btn sm" type="button" data-act="ignorieren" data-key="' + esc(v.schluessel) + '">Kein Duplikat</button></div></td></tr>'));
+    html.push('</tbody></table>');
+    zeigen(html.join(''), zeilen.length + ' Vorschläge · Grundlage: gleiche Firma, gleicher Kontakt und Sergiis Duplikatprüfung');
+  }
+
+  function tabelleGruppen(q) {
+    let zeilen = daten.gruppen.slice().sort((a, b) => String(b.zeitpunkt).localeCompare(String(a.zeitpunkt)));
+    if (q) zeilen = zeilen.filter((g) => (g.gruppe_id + ' ' + g.grund + ' ' + g.von + ' ' + g.lead_ids.map((id) => suchtext(leadVon(id) || {})).join(' ')).toLowerCase().includes(q));
+    const html = ['<table><thead><tr><th>Firma (Hauptlead)</th><th>Einträge</th><th>Grund</th><th>Von</th><th>Zusammengeführt</th><th>Aktion</th></tr></thead><tbody>'];
+    if (!zeilen.length) html.push('<tr><td colspan="6"><div class="empty">' + (q ? 'Keine Treffer.' : 'Noch nichts zusammengeführt.') + '</div></td></tr>');
+    zeilen.forEach((g) => {
+      const h = leadVon(g.haupt_lead_id) || {};
+      html.push('<tr data-id="' + esc(g.haupt_lead_id) + '">' +
+        '<td class="tt">' + esc(h.firma || '–') + '<div class="tsub">' + esc(h.kontakt || '') + ' · ' + esc(g.gruppe_id) + '</div></td>' +
+        '<td>' + leadListe(g.lead_ids) + '</td>' +
+        '<td>' + esc(g.grund || '–') + '</td>' +
+        '<td>' + esc(g.von || '–') + '</td>' +
+        '<td>' + esc(zeit(g.zeitpunkt)) + '</td>' +
+        '<td><button class="btn sm danger" type="button" data-act="trennen" data-gruppe="' + esc(g.gruppe_id) + '">Trennen</button></td></tr>');
+    });
+    html.push('</tbody></table>');
+    zeigen(html.join(''), zeilen.length + ' Gruppen · Trennen macht eine Zusammenführung vollständig rückgängig');
+  }
+
+  function tabelleVerlauf(q) {
+    let zeilen = daten.verlauf.slice();
+    if (q) zeilen = zeilen.filter((e) => JSON.stringify(e).toLowerCase().includes(q));
+    const html = ['<table><thead><tr><th>Zeitpunkt</th><th>Aktion</th><th>Gruppe</th><th>Leads</th><th>Grund</th><th>Von</th></tr></thead><tbody>'];
+    if (!zeilen.length) html.push('<tr><td colspan="6"><div class="empty">Noch keine Aktionen.</div></td></tr>');
+    zeilen.forEach((e) => {
+      const ids = String(e.lead_ids || '').split(',').filter(Boolean);
+      const c = e.aktion === 'zusammengefuehrt' ? 'p-acc' : e.aktion === 'getrennt' ? 'p-warn' : 'p-n';
+      html.push('<tr><td>' + esc(zeit(e.zeitpunkt)) + '</td><td><span class="pill ' + c + '">' + esc(AKTION[e.aktion] || e.aktion) + '</span></td>' +
+        '<td class="muted">' + esc(e.gruppe_id) + '</td><td>' + leadListe(ids) + '</td><td>' + esc(e.grund || '–') + '</td><td>' + esc(e.von || '–') + '</td></tr>');
+    });
+    html.push('</tbody></table>');
+    zeigen(html.join(''), zeilen.length + ' Einträge · jede Aktion bleibt nachvollziehbar, nichts wird gelöscht');
+  }
+
+  $('tableBox').addEventListener('click', (ev) => {
+    const cb = ev.target.closest('input.sel');
+    if (cb) {
+      if (cb.id === 'selAll') sichtbar.forEach((id) => cb.checked ? auswahl.add(id) : auswahl.delete(id));
+      else cb.checked ? auswahl.add(cb.dataset.id) : auswahl.delete(cb.dataset.id);
+      auswahlLeiste(); tabelle();
+      return;
+    }
+    if (ev.target.closest('td.sel')) return;
+    const btn = ev.target.closest('button[data-act]');
+    if (btn) { tabellenAktion(btn.dataset); return; }
+    const th = ev.target.closest('th[data-k]');
+    if (th) {
+      const k = th.dataset.k;
+      sortierung = sortierung.spalte === k ? { spalte: k, auf: !sortierung.auf } : { spalte: k, auf: k !== 'score' };
+      tabelle(); return;
+    }
+    const tr = ev.target.closest('tr[data-id]');
+    if (tr) openDetail(tr.dataset.id);
+  });
+  $('search').addEventListener('input', () => tabelle());
+
+  function auswahlLeiste() {
+    $('actionbar').hidden = !auswahl.size;
+    $('auswahlText').textContent = auswahl.size + (auswahl.size === 1 ? ' Lead ausgewählt – für das Zusammenführen mindestens zwei wählen' : ' Leads ausgewählt');
+    $('mergeBtn').disabled = auswahl.size < 2;
+  }
+  $('clearSel').addEventListener('click', () => { auswahl.clear(); auswahlLeiste(); tabelle(); });
+  $('mergeBtn').addEventListener('click', () => openMerge([...auswahl], ''));
+
+  function tabellenAktion(d) {
+    const v = daten.vorschlaege.find((x) => x.schluessel === d.key);
+    if (d.act === 'vorschlag-merge' && v) openMerge(v.lead_ids, 'Vorschlag: ' + v.gruende.join(', '));
+    if (d.act === 'ignorieren' && v && confirm('„' + v.firma + '“: Diese ' + v.lead_ids.length + ' Einträge sind KEINE Duplikate?\nDer Vorschlag wird ausgeblendet (im Verlauf nachvollziehbar).'))
+      aktion({ aktion: 'ignorieren', lead_ids: v.lead_ids });
+    if (d.act === 'trennen') gruppeTrennen(d.gruppe);
+  }
+
+  function gruppeTrennen(gruppeId) {
+    const g = daten.gruppen.find((x) => x.gruppe_id === gruppeId);
+    if (!g || !confirm('Gruppe trennen? Die ' + g.lead_ids.length + ' Einträge stehen danach wieder einzeln in der Liste.')) return;
+    aktion({ aktion: 'trennen', gruppe_id: gruppeId }).then((ok) => { if (ok && modus === 'detail') closeDrawer(); });
+  }
+
+  async function aktion(body) {
+    try {
+      const r = await request(CONFIG.gruppenUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      toast(r.meldung || 'Gespeichert.', true);
+      auswahl.clear();
+      await laden();
+      return true;
+    } catch (e) {
+      if (e.auth && !fest) { store.set('messeAdminLogin', null); showLogin(e.message); return false; }
+      toast(e.message, false);
+      return false;
+    }
+  }
+
+  let toastTimer = null;
+  function toast(text, ok) {
+    const t = $('toast');
+    t.textContent = text;
+    t.className = 'toast show ' + (ok ? 'ok' : 'err');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.className = 'toast'; }, 4500);
+  }
+
+  function status(ok, text) {
+    $('pulse').classList.toggle('off', !ok);
+    $('liveText').textContent = text;
+    if (!ok && !geladen) {
+      const m = '<div class="empty">' + esc(text) + '</div>';
+      $('tableBox').innerHTML = m; $('interestBars').innerHTML = m; $('katBox').innerHTML = m;
+    }
+  }
+
+  /* ================= Automatische Aktualisierung ================= */
+  let laedt = false, intervall = null;
+  async function laden() {
+    if (laedt || !auth) return;
+    laedt = true; $('refreshBtn').disabled = true;
+    try { render(await request(CONFIG.datenUrl)); }
+    catch (e) {
+      if (e.auth && !fest) { store.set('messeAdminLogin', null); return showLogin(e.message); }
+      status(false, e.message);
+    } finally { laedt = false; $('refreshBtn').disabled = false; }
+  }
+  function planeAktualisierung() {
+    clearInterval(intervall);
+    intervall = setInterval(() => { if (!document.hidden) laden(); }, CONFIG.aktualisierenSek * 1000);
+  }
+  $('refreshBtn').addEventListener('click', laden);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && geladen) laden(); });
+
+  /* ================= Seitenleiste ================= */
+  let modus = null;   // 'chat' | 'detail' | 'merge'
+  let aktiv = null;   // chat key
+  let detailId = null;
+  let mergeIds = [];
+
+  function drawer(m, titel, sub, icon) {
+    modus = m;
+    $('dTitle').textContent = titel;
+    $('dSub').textContent = sub;
+    $('dIcon').innerHTML = '<svg class="i"><use href="#' + icon + '"/></svg>';
+    $('composer').hidden = m !== 'chat';
+    $('newChat').hidden = m !== 'chat';
+    $('msgs').classList.toggle('panels', m !== 'chat');
+    $('drawer').classList.add('open'); $('backdrop').classList.add('open');
+    $('drawer').setAttribute('aria-hidden', 'false');
+  }
+  function closeDrawer() {
+    $('drawer').classList.remove('open'); $('backdrop').classList.remove('open');
+    $('drawer').setAttribute('aria-hidden', 'true');
+    detailId = null;
+  }
+  $('closeDrawer').addEventListener('click', closeDrawer);
+  $('backdrop').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
+
+  /* ---------- Details ---------- */
+  function kv(paare) {
+    return '<dl class="kv">' + paare.filter((p) => p).map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + (v || '<span class="muted">–</span>') + '</dd>').join('') + '</dl>';
+  }
+
+  function openDetail(id, still) {
+    const l = leadVon(id);
+    if (!l) return;
+    detailId = id;
+    const g = l.gruppe_id ? daten.gruppen.find((x) => x.gruppe_id === l.gruppe_id) : null;
+    const pos = $('msgs').scrollTop;
+    drawer('detail', l.firma, (l.kontakt || 'Unbekannter Kontakt') + ' · ' + kurzId(l.lead_id), 'i-users');
+    const summe = l.gruende.reduce((s, x) => s + x.punkte, 0);
+    const t = tageBis(l.faellig_am);
+    $('msgs').innerHTML =
+      '<div class="panel"><div class="kopf">' + katPill(l) + '<strong>' + (l.score ?? '–') + '/100</strong><span class="muted">' + esc(KAT[l.kategorie] || '') + (l.vorlaeufig ? ' · vorläufig' : '') + '</span></div>' +
+      '<p style="margin:0 0 4px"><b>Nächster Schritt:</b> ' + esc(l.naechster_schritt) + '</p>' +
+      '<p class="muted" style="margin:0">Fällig: ' + esc(datum(l.faellig_am)) + (t !== null ? (t >= 0 ? ' (in ' + t + ' Tagen)' : ' (überfällig)') : '') + '</p></div>' +
+
+      (g ? '<div class="panel"><h3>Zusammengeführt · ' + g.lead_ids.length + ' Einträge</h3>' +
+        g.lead_ids.map((mid) => {
+          const m = leadVon(mid) || { lead_id: mid };
+          return '<div class="mitglied"><div class="wer"><b>' + esc(m.kontakt || 'Ohne Kontakt') + (mid === g.haupt_lead_id ? ' · Hauptlead' : '') + '</b><div>' + esc(datum(m.erfasst)) + ' · ' + esc(kurzId(mid)) + ' · ' + esc(m.duplikat || '') + '</div></div>' +
+            '<div class="row-actions">' + (mid !== id ? '<button class="btn sm" type="button" data-act="zeige" data-id="' + esc(mid) + '">Ansehen</button>' : '') +
+            '<button class="btn sm" type="button" data-act="herausloesen" data-gruppe="' + esc(g.gruppe_id) + '" data-id="' + esc(mid) + '">Herauslösen</button></div></div>';
+        }).join('') +
+        '<p class="muted" style="margin:8px 0">Grund: ' + esc(g.grund || '–') + ' · von ' + esc(g.von || '–') + ' · ' + esc(zeit(g.zeitpunkt)) + '</p>' +
+        '<div class="d-actions"><button class="btn sm danger" type="button" data-act="trennen" data-gruppe="' + esc(g.gruppe_id) + '">Gruppe trennen</button></div></div>' : '') +
+
+      '<div class="panel"><h3>Kontakt</h3>' + kv([
+        ['Firma', esc(l.firma)], ['Kontakt', esc(l.kontakt)],
+        ['E-Mail', l.email ? '<a href="mailto:' + esc(l.email) + '">' + esc(l.email) + '</a> <span class="muted">(nicht verifiziert)</span>' : ''],
+        ['Telefon', esc(l.telefon)], ['Website', l.website ? '<a href="' + esc(l.website) + '" target="_blank" rel="noopener">' + esc(l.website) + '</a>' : ''],
+        ['Erfasst', esc(zeit(l.erfasst))], ['Lead-ID', '<span class="muted">' + esc(l.lead_id) + '</span>']
+      ]) + '</div>' +
+
+      '<div class="panel"><h3>Angaben</h3>' + kv([
+        ['Training', esc(l.interesse)], ['Budget', esc(l.budget)], ['Follow-up', esc(l.follow_up)], ['Fällig am', esc(datum(l.faellig_am))]
+      ]) + '</div>' +
+
+      '<div class="panel"><h3>Bewertung (Sergiis Regelwerk 1.0)</h3>' +
+      l.gruende.map((x) => '<div class="grund"><b class="' + (x.punkte > 0 ? 'plus' : '') + '">' + (x.punkte > 0 ? '+' : '') + x.punkte + '</b><span>' + esc(x.grund) + '</span></div>').join('') +
+      '<div class="grund summe"><b>' + summe + '</b><span>Punkte nach Formel' + (!l.vorlaeufig && summe !== l.score ? ' · gespeichert: ' + l.score : '') + '</span></div>' +
+      (l.vorlaeufig ? '<div class="hinweis">Vorläufig berechnet mit Sergiis Score-Formel. Bestätigt wird die Bewertung, sobald Sergiis Workflow den Lead verarbeitet hat.</div>' : '') + '</div>' +
+
+      '<div class="panel"><h3>Status in Sergiis Workflow</h3>' + kv([
+        ['Verarbeitung', verarbeitungPill(l.verarbeitung) + (l.versuche ? ' <span class="muted">' + l.versuche + ' Versuch(e)</span>' : '')],
+        l.fehler ? ['Letzter Fehler', '<span class="pill p-err">' + esc(l.fehler) + '</span>'] : null,
+        ['E-Mail-Bericht', emailPill(l.email_status)],
+        ['Duplikatprüfung', duplikatPill(l.duplikat)],
+        ['Prüfen nötig', l.pruefen ? '<span class="pill p-warn">Ja</span>' : 'Nein'],
+        l.unsicherheiten.length ? ['Unsicherheiten', esc(l.unsicherheiten.join(', '))] : null
+      ]) + '</div>' +
+
+      '<div class="panel"><h3>Original-Notiz</h3><pre class="notiz">' + esc(l.notiz || '–') + '</pre>' +
+      '<div class="hinweis">KI-Zusammenfassung und Firmenrecherche stehen im E-Mail-Bericht von Sergiis Workflow. Für die Anzeige hier müsste Sergii ein Leserecht auf die Tabelle <code>processing_results</code> freigeben.</div></div>' +
+
+      '<div class="d-actions"><button class="btn" type="button" data-act="assist"><svg class="i"><use href="#i-spark"/></svg>Assistent: Telefonat vorbereiten</button></div>';
+    $('msgs').scrollTop = still ? pos : 0;
+  }
+
+  /* ---------- Zusammenführen ---------- */
+  function openMerge(ids, grund) {
+    const einheitenListe = einheiten();
+    const gewaehlt = ids.map((id) => einheitenListe.find((e) => e.lead_id === id) || leadVon(id)).filter(Boolean);
+    if (gewaehlt.length < 2) { toast('Bitte mindestens zwei Leads auswählen.', false); return; }
+    mergeIds = gewaehlt.map((l) => l.lead_id);
+    const haupt = [...gewaehlt].sort((a, b) => String(a.erfasst).localeCompare(String(b.erfasst)))[0].lead_id;
+    const eintraege = gewaehlt.reduce((s, l) => s + ((l.mitglieder && l.mitglieder.length) || 1), 0);
+    drawer('merge', 'Leads zusammenführen', eintraege + ' Einträge werden zu einem Lead', 'i-link');
+    $('msgs').innerHTML =
+      '<div class="panel"><h3>Welcher Eintrag ist der Hauptlead?</h3>' +
+      gewaehlt.map((l) => '<label class="wahl"><input type="radio" name="haupt" value="' + esc(l.lead_id) + '"' + (l.lead_id === haupt ? ' checked' : '') + '>' +
+        '<div><b>' + esc(l.firma) + ' · ' + esc(l.kontakt || 'Ohne Kontakt') + '</b>' +
+        '<span>' + esc(zeit(l.erfasst)) + ' · ' + esc(l.kategorie || '–') + ' / ' + esc(l.score ?? '–') + ' Punkte · ' + esc(kurzId(l.lead_id)) + (l.mitglieder && l.mitglieder.length > 1 ? ' · schon ' + l.mitglieder.length + ' Einträge' : '') + '</span></div></label>').join('') +
+      '<div class="hinweis">Der Hauptlead steht danach in der Liste, die anderen Einträge hängen darunter. Vorschlag: der früheste Eintrag (Erstkontakt).</div></div>' +
+      '<div class="panel"><div class="field" style="margin:0"><label for="mergeGrund">Grund (optional, steht im Verlauf)</label><textarea id="mergeGrund" maxlength="300" placeholder="z. B. gleiche Person, zweimal am Stand">' + esc(grund) + '</textarea></div></div>' +
+      '<div class="panel"><p style="margin:0 0 10px" class="muted">Sergiis Datenbank bleibt unverändert – die Zusammenführung wird im Messe-Hub gespeichert und kann jederzeit wieder getrennt werden.</p>' +
+      '<div class="d-actions"><button class="btn primary" type="button" data-act="merge-ok"><svg class="i"><use href="#i-link"/></svg>Jetzt zusammenführen</button>' +
+      '<button class="btn" type="button" data-act="abbrechen">Abbrechen</button></div></div>';
+  }
+
+  $('msgs').addEventListener('click', async (ev) => {
+    const chip = ev.target.closest('.chip');
+    if (chip && modus === 'chat') {
+      const c = CONFIG.chats[aktiv];
+      if (chip.dataset.beispiel !== undefined) { $('chatInput').value = c.beispiele[Number(chip.dataset.beispiel)].text; groesse(); $('chatInput').focus(); }
+      else senden(chip.textContent);
+      return;
+    }
+    const btn = ev.target.closest('button[data-act]');
+    if (!btn) return;
+    const d = btn.dataset;
+    if (d.act === 'zeige') openDetail(d.id);
+    if (d.act === 'trennen') gruppeTrennen(d.gruppe);
+    if (d.act === 'herausloesen' && confirm('Diesen Eintrag aus der Gruppe herauslösen? Er steht danach wieder einzeln in der Liste.')) aktion({ aktion: 'herausloesen', gruppe_id: d.gruppe, lead_id: d.id });
+    if (d.act === 'assist') {
+      const l = leadVon(detailId);
+      openChat('assistent');
+      if (l) senden('Bereite mein Telefonat mit ' + (l.kontakt || 'dem Ansprechpartner') + ' von ' + l.firma + ' vor (Lead ' + l.lead_id + ').');
+    }
+    if (d.act === 'abbrechen') closeDrawer();
+    if (d.act === 'merge-ok') {
+      const gewaehlt = document.querySelector('input[name="haupt"]:checked');
+      btn.disabled = true; btn.textContent = 'Wird gespeichert …';
+      const ok = await aktion({ aktion: 'zusammenfuehren', lead_ids: mergeIds, haupt_lead_id: gewaehlt ? gewaehlt.value : mergeIds[0], grund: $('mergeGrund').value.trim() });
+      if (ok) closeDrawer(); else { btn.disabled = false; btn.textContent = 'Jetzt zusammenführen'; }
+    }
+  });
+
+  /* ---------- Chat ---------- */
+  let sendet = false;
+
+  function sitzung(key) {
+    let s = store.get('admin_chat_' + key);
+    if (!s) { s = { id: (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(16).slice(2)), msgs: [] }; store.set('admin_chat_' + key, s); }
+    return s;
+  }
+
+  function md(text) {
+    if (window.marked && window.DOMPurify) {
+      const html = DOMPurify.sanitize(marked.parse(String(text), { breaks: true, gfm: true }));
+      const div = document.createElement('div'); div.innerHTML = html;
+      div.querySelectorAll('a').forEach((a) => { a.target = '_blank'; a.rel = 'noopener'; });
+      return div.innerHTML;
+    }
+    return esc(text).replace(/\n/g, '<br>');
+  }
+
+  function openChat(key) {
+    aktiv = key;
+    const c = CONFIG.chats[key];
+    drawer('chat', c.titel, c.untertitel, key === 'erfassen' ? 'i-note' : 'i-spark');
+    $('chatInput').placeholder = c.platzhalter;
+    zeichneChat();
+    setTimeout(() => $('chatInput').focus(), 250);
+  }
+
+  function zeichneChat(warten) {
+    if (modus !== 'chat') return;
+    const c = CONFIG.chats[aktiv];
+    const s = sitzung(aktiv);
+    const box = $('msgs');
+    if (!s.msgs.length && !warten) {
+      box.innerHTML = '<div class="d-empty"><div class="ic"><svg class="i"><use href="#' + (aktiv === 'erfassen' ? 'i-note' : 'i-spark') + '"/></svg></div>' +
+        '<h3>' + esc(c.titel) + '</h3><p>' + esc(c.leer) + '</p>' +
+        ((c.vorschlaege.length || c.beispiele.length) ? '<div class="chips">' +
+          c.beispiele.map((b, i) => '<button class="chip" type="button" data-beispiel="' + i + '">' + esc(b.titel) + '</button>').join('') +
+          c.vorschlaege.map((v) => '<button class="chip" type="button">' + esc(v) + '</button>').join('') + '</div>' : '') + '</div>';
+      return;
+    }
+    box.innerHTML = s.msgs.map((m) =>
+      '<div class="msg ' + (m.von === 'ich' ? 'me' : m.fehler ? 'bot err' : 'bot') + '"><div class="bubble">' + (m.von === 'ich' ? esc(m.text) : md(m.text)) + '</div>' +
+      '<time>' + esc(m.zeit) + '</time></div>').join('') +
+      (warten ? '<div class="typing"><span class="dots"><i></i><i></i><i></i></span>' + esc(c.warten) + '</div>' : '');
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function senden(text) {
+    text = String(text || '').trim();
+    if (!text || sendet || !aktiv) return;
+    const key = aktiv;
+    const c = CONFIG.chats[key];
+    const s = sitzung(key);
+    const jetzt = () => new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    s.msgs.push({ von: 'ich', text, zeit: jetzt() }); store.set('admin_chat_' + key, s);
+    $('chatInput').value = ''; groesse();
+    sendet = true; $('sendBtn').disabled = true;
+    zeichneChat(true);
+    try {
+      const r = await request(c.url, { method: 'POST', timeout: 180000, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sendMessage', sessionId: s.id, chatInput: text }) });
+      const d = Array.isArray(r) ? r[0] : r;
+      const antwort = (d && (d.output ?? d.text ?? d.message)) || 'Keine Antwort erhalten.';
+      s.msgs.push({ von: 'bot', text: String(antwort), zeit: jetzt() });
+      laden();
+    } catch (e) {
+      if (e.auth && !fest) { store.set('messeAdminLogin', null); showLogin(e.message); }
+      s.msgs.push({ von: 'bot', fehler: true, text: e.message, zeit: jetzt() });
+    } finally {
+      store.set('admin_chat_' + key, s);
+      sendet = false; $('sendBtn').disabled = false;
+      if (modus === 'chat' && aktiv === key) zeichneChat();
+      $('chatInput').focus();
+    }
+  }
+
+  function groesse() { const t = $('chatInput'); t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 200) + 'px'; }
+  $('chatInput').addEventListener('input', groesse);
+  $('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); senden($('chatInput').value); } });
+  $('chatForm').addEventListener('submit', (e) => { e.preventDefault(); senden($('chatInput').value); });
+  $('newChat').addEventListener('click', () => { if (sendet || modus !== 'chat') return; store.set('admin_chat_' + aktiv, null); zeichneChat(); $('chatInput').focus(); });
+
+  start();
+})();
+</script>
+</body>
+</html>

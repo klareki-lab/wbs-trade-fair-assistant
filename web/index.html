@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#133e43">
+  <meta name="description" content="Messekontakte strukturiert erfassen – Train Today Trade Fair Assistant.">
+  <title>Train Today · Messe Assistent</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Zum Inhalt</a>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Train Today – Messe Assistent">
+      <span class="brand-symbol" aria-hidden="true">T<span>↗</span></span>
+      <span class="brand-copy"><strong>TRAIN TODAY</strong><span>Messe Assistent</span></span>
+    </a>
+    <div class="header-actions">
+      <span class="mode-label" id="mode-label">Kontaktaufnahme</span>
+      <button class="text-button" id="logout-button" type="button" hidden>Abmelden</button>
+    </div>
+  </header>
+
+  <main id="main-content" class="page-shell">
+    <div id="startup" class="loading-screen" role="status"><span class="spinner" aria-hidden="true"></span> Anwendung wird geladen …</div>
+
+    <section id="login-panel" class="login-layout" aria-labelledby="login-title" hidden>
+      <div class="intro-panel">
+        <p class="eyebrow">Gute Gespräche. Klarer nächster Schritt.</p>
+        <h1 id="login-title">Ein Kontakt.<br>Alles an einem Ort.</h1>
+        <p class="intro-text">Halten Sie fest, was am Messestand zählt: Menschen, Trainingsbedarf und die nächsten Schritte.</p>
+        <div class="intro-note"><span class="small-mark" aria-hidden="true">↗</span><p>Auch ein unvollständiger Kontakt ist ein Anfang. Eine E-Mail-Adresse ist keine Voraussetzung.</p></div>
+      </div>
+      <form id="login-form" class="card login-card" novalidate>
+        <span class="section-number" aria-hidden="true">TEAM-ZUGANG</span>
+        <h2>Willkommen am Stand</h2>
+        <p class="muted">Melden Sie sich mit dem Zugangsschlüssel Ihres Teams an.</p>
+        <div class="field">
+          <label for="access-key">Zugangsschlüssel</label>
+          <input id="access-key" name="access_key" type="password" autocomplete="off" spellcheck="false" required aria-describedby="login-error">
+          <p id="login-error" class="field-error" role="alert"></p>
+        </div>
+        <button class="button primary full-width" id="login-submit" type="submit"><span>Anmelden</span><span aria-hidden="true">→</span></button>
+        <p class="fine-print">Der Schlüssel wird nicht im Browser gespeichert. Die Anmeldung gilt bis zu acht Stunden.</p>
+      </form>
+    </section>
+
+    <section id="capture-panel" hidden aria-labelledby="capture-title">
+      <div class="page-heading">
+        <div><p class="eyebrow" id="capture-eyebrow">AM MESSESTAND</p><h1 id="capture-title">Ein gutes Gespräch<br class="mobile-break"> festhalten.</h1><p id="capture-description" class="lead">Kurz erfassen. Sicher speichern. Gemeinsam weiterdenken.</p></div>
+        <div class="draft-chip" id="draft-state"><span class="status-dot" aria-hidden="true"></span><span>Entwurf in diesem Tab</span></div>
+      </div>
+
+      <div class="capture-layout">
+        <form id="lead-form" novalidate>
+          <div id="form-alert" class="notice" role="alert" tabindex="-1" hidden></div>
+          <div id="storage-warning" class="notice warning" role="status" hidden></div>
+          <fieldset id="capture-fields">
+            <legend class="sr-only">Kontakt und Gesprächsnotizen</legend>
+            <section class="card form-section" aria-labelledby="company-heading">
+              <div class="section-heading"><span class="section-number" aria-hidden="true">01</span><div><h2 id="company-heading">Unternehmen & Kontakt</h2><p>Der Firmenname ist Pflicht. Ergänzen Sie, was Sie wissen.</p></div></div>
+              <div class="fields-grid">
+                <div class="field span-two"><label for="company_name">Unternehmen <span class="required-label">Pflichtfeld</span></label><input id="company_name" name="company_name" autocomplete="organization" maxlength="200" required aria-describedby="error-company_name"><p class="field-error" id="error-company_name"></p></div>
+                <div class="field span-two"><label for="contact_name">Kontaktperson <span class="optional">optional</span></label><input id="contact_name" name="contact_name" autocomplete="name" maxlength="160" aria-describedby="error-contact_name"><p class="field-error" id="error-contact_name"></p></div>
+                <div class="field"><label for="email">E-Mail <span class="optional">optional</span></label><input id="email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" maxlength="254" aria-describedby="error-email"><p class="field-error" id="error-email"></p></div>
+                <div class="field"><label for="phone">Telefon <span class="optional">optional</span></label><input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="40" aria-describedby="error-phone"><p class="field-error" id="error-phone"></p></div>
+                <div class="field span-two"><label for="website">Website <span class="optional">optional</span></label><input id="website" name="website" type="url" inputmode="url" autocomplete="url" placeholder="https://" autocapitalize="none" spellcheck="false" maxlength="2048" aria-describedby="hint-website error-website"><p class="field-hint" id="hint-website">Falls bekannt, mit https:// oder http:// angeben.</p><p class="field-error" id="error-website"></p></div>
+              </div>
+            </section>
+
+            <section class="card form-section" aria-labelledby="needs-heading">
+              <div class="section-heading"><span class="section-number" aria-hidden="true">02</span><div><h2 id="needs-heading">Bedarf & nächster Schritt</h2><p>Offene Fragen dürfen offen bleiben.</p></div></div>
+              <div class="fields-grid">
+                <div class="field"><label for="training_interest">Trainingsinteresse <span class="optional">optional</span></label><select id="training_interest" name="training_interest" aria-describedby="error-training_interest"><option value="">Noch nicht erfasst</option><option value="leadership">Führung & Leadership</option><option value="communication">Kommunikation</option><option value="sales">Vertrieb</option><option value="project_management">Projektmanagement</option><option value="digital_skills">Digitale Kompetenzen</option><option value="ai_automation">KI & Automatisierung</option><option value="other">Anderes Thema</option></select><p class="field-error" id="error-training_interest"></p></div>
+                <div class="field"><label for="budget_status">Budgetstatus <span class="optional">optional</span></label><select id="budget_status" name="budget_status" aria-describedby="error-budget_status"><option value="">Noch nicht erfasst</option><option value="approved">Freigegeben</option><option value="planned">Geplant</option><option value="unknown">Unbekannt</option><option value="not_disclosed">Nicht genannt</option><option value="no_budget">Kein Budget</option></select><p class="field-error" id="error-budget_status"></p></div>
+                <div class="field"><label for="follow_up">Nachfassen <span class="optional">optional</span></label><select id="follow_up" name="follow_up" aria-describedby="error-follow_up"><option value="">Noch nicht erfasst</option><option value="within_one_week">Innerhalb einer Woche</option><option value="within_two_weeks">Innerhalb von zwei Wochen</option><option value="within_one_month">Innerhalb eines Monats</option><option value="on_date">An einem bestimmten Datum</option><option value="no_follow_up">Kein Nachfassen</option><option value="not_decided">Noch nicht entschieden</option></select><p class="field-error" id="error-follow_up"></p></div>
+                <div class="field" id="follow-up-date-field" hidden><label for="follow_up_date">Gewünschtes Datum</label><input id="follow_up_date" name="follow_up_date" type="date" min="1900-01-01" aria-describedby="error-follow_up_date"><p class="field-error" id="error-follow_up_date"></p></div>
+              </div>
+            </section>
+
+            <section class="card form-section" aria-labelledby="notes-heading">
+              <div class="section-heading"><span class="section-number" aria-hidden="true">03</span><div><h2 id="notes-heading">Was bleibt vom Gespräch?</h2><p>Konkrete Wünsche, Fragen oder Vereinbarungen.</p></div></div>
+              <div class="field"><label for="notes">Gesprächsnotizen <span class="optional">optional bei vorhandenen Kontaktdaten</span></label><textarea id="notes" name="notes" rows="6" maxlength="10000" placeholder="Was ist dem Unternehmen wichtig? Welcher nächste Schritt wurde besprochen?" aria-describedby="notes-hint notes-count error-notes"></textarea><div class="textarea-meta"><p class="field-hint" id="notes-hint">Ohne Kontaktdaten: mindestens 10 Zeichen und 5 Buchstaben oder Ziffern.</p><span id="notes-count" class="character-count">0 / 10.000</span></div><p class="field-error" id="error-notes"></p></div>
+              <div class="honeypot" aria-hidden="true"><label for="company_fax">Faxnummer bitte frei lassen</label><input id="company_fax" name="company_fax" type="text" tabindex="-1" autocomplete="off"></div>
+            </section>
+          </fieldset>
+          <p class="data-use-note">Für die Bearbeitung werden Unternehmensname und Website-Domain an den Recherchedienst sowie Gesprächsnotizen an den KI-Dienst übermittelt. Die Ergebnisse werden in einem internen Vertriebsbericht zusammengefasst.</p>
+          <div class="draft-options"><label class="checkbox-label" for="persist-draft"><input type="checkbox" id="persist-draft"><span>Entwurf auf diesem Gerät behalten</span></label><p>Enthält personenbezogene Daten. Nur auf einem eigenen, geschützten Gerät aktivieren.</p></div>
+          <div class="submit-bar"><p id="submit-hint">Gespeichert wird erst, wenn Sie absenden.</p><button id="capture-submit" class="button primary" type="submit"><span>Kontakt speichern</span><span aria-hidden="true">↗</span></button></div>
+          <button id="new-after-conflict" class="button secondary full-width" type="button" hidden>Als neue Erfassung bearbeiten</button>
+        </form>
+
+        <aside class="capture-aside" aria-label="Hinweise zur Erfassung">
+          <div class="aside-card"><span class="aside-icon" aria-hidden="true">↗</span><h2>Das Gespräch zählt.</h2><p>Ein Firmenname und eine Kontaktperson, eine erreichbare Nummer oder aussagekräftige Notizen reichen für den ersten Schritt.</p><div class="aside-divider"></div><p class="small">E-Mail und Budget sind optional. Fehlende Angaben werden nicht erfunden.</p></div>
+          <p class="aside-caption">TRAIN TODAY<br><span>Weiterbildung beginnt mit Zuhören.</span></p>
+        </aside>
+      </div>
+    </section>
+
+    <section id="receipt-panel" class="receipt-layout" aria-labelledby="receipt-title" hidden>
+      <div class="card receipt-card">
+        <div class="success-mark" aria-hidden="true">✓</div><p class="eyebrow">KONTAKT GESPEICHERT</p><h1 id="receipt-title" tabindex="-1">Gut festgehalten.</h1><p id="receipt-copy" class="lead">Der Kontakt ist gespeichert. Die weitere Bearbeitung läuft unabhängig von diesem Fenster.</p>
+        <div class="receipt-id"><span>Referenz</span><code id="receipt-id"></code></div>
+        <p id="replay-note" class="fine-print" hidden>Die vorherige Übermittlung wurde bestätigt. Es wurde kein weiterer Eintrag angelegt.</p>
+        <div id="status-card" class="processing-card" hidden aria-live="polite" aria-atomic="true">
+          <div class="processing-heading"><span id="processing-dot" class="status-dot pulse" aria-hidden="true"></span><h2 id="processing-title">Bearbeitung wartet</h2></div>
+          <p id="processing-copy">Der Kontakt wartet auf die nächste Verarbeitung.</p>
+          <p id="score-line" class="score-line" hidden></p>
+          <p id="email-line" class="email-line" hidden></p>
+          <p id="retry-line" class="fine-print" hidden></p>
+          <p id="status-note" class="fine-print"></p>
+        </div>
+        <div class="receipt-actions"><button id="new-lead-button" class="button primary" type="button">Nächsten Kontakt erfassen <span aria-hidden="true">→</span></button><button id="refresh-status" class="button secondary" type="button" hidden>Status erneut prüfen</button></div>
+      </div>
+    </section>
+
+    <section id="unavailable-panel" class="card unavailable-panel" hidden aria-labelledby="unavailable-title"><h1 id="unavailable-title">Gerade nicht erreichbar</h1><p>Die Anwendung konnte nicht geladen werden. Bitte prüfen Sie die Verbindung und laden Sie die Seite erneut.</p><button id="reload-button" class="button primary" type="button">Erneut laden</button></section>
+  </main>
+  <footer class="site-footer"><span>TRAIN TODAY · Trade Fair Assistant</span><span id="footer-note">Kontakte erfassen. Nächste Schritte ermöglichen.</span></footer>
+  <noscript><p class="noscript-note">Bitte aktivieren Sie JavaScript, um Kontakte sicher zu erfassen.</p></noscript>
+</body>
+</html>

@@ -1,0 +1,240 @@
+{
+  "id": "8en4ZKeCb4TJx5VD",
+  "name": "WBS — Trade Fair Assistant — Lead Status",
+  "active": false,
+  "nodes": [
+    {
+      "id": "a31e97a5-d565-42b0-ab48-81d43c326d31",
+      "name": "Status Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "trade-fair/status",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "http://localhost:5678"
+        }
+      },
+      "webhookId": "9da9690e-92a2-4b98-a501-fb0df465abdb",
+      "notes": "Internal gateway only. Same Header Auth credential as WF-A. Never expose this secret in the browser.",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "yybOhcT90OdKGGZS",
+          "name": "WBS Trade Fair — Gateway Auth"
+        }
+      }
+    },
+    {
+      "id": "0e9a84f0-1718-405b-a913-31c3d86e97da",
+      "name": "Validate Status Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const b=$input.first().json.body;const valid=b&&typeof b==='object'&&!Array.isArray(b)&&Object.keys(b).length===2&&/^FAIR-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(b.lead_id||'')&&/^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/.test(b.submission_id||'');return [{json:valid?{valid:true,lead_id:b.lead_id,submission_id:b.submission_id}:{valid:false,http_status:400,response_body:{success:false,error:{code:'INVALID_STATUS_REQUEST',message:'A lead identifier and its submission identifier are required.'}}}}];"
+      }
+    },
+    {
+      "id": "322d857d-defa-4ce9-abcb-c7b019f6bad3",
+      "name": "Status Request Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d1f06f8b-d315-4618-a8b7-de6cf2e3f5b8",
+              "leftValue": "={{ $json.valid === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "099ff34e-217c-4791-a6a7-c7e9e1e38f3e",
+      "name": "Read Processing Status",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        720,
+        -100
+      ],
+      "parameters": {
+        "resource": "database",
+        "operation": "executeQuery",
+        "query": "SELECT trade_fair.get_lead_status($1::text,$2::text) AS status_result;",
+        "options": {
+          "queryReplacement": "={{ [$json.lead_id,$json.submission_id] }}",
+          "queryBatching": "single",
+          "connectionTimeout": 10
+        }
+      },
+      "onError": "continueErrorOutput",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "VFKanUw3F67SJeqO",
+          "name": "Sergii SQL trade fair assistant"
+        }
+      }
+    },
+    {
+      "id": "630aa64e-a929-43c2-a3fa-09eb2c64ccaf",
+      "name": "Build Safe Status Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const x=$input.first().json;const unavailable={http_status:503,response_body:{success:false,error:{code:'STATUS_UNAVAILABLE',message:'Status is temporarily unavailable.'}}};if(x.valid===false&&x.http_status===400)return [{json:x}];const r=x.status_result;if(r?.success===false&&r?.error?.code==='NOT_FOUND')return [{json:{http_status:404,response_body:{success:false,error:{code:'NOT_FOUND',message:'Lead not found.'}}}}];if(r?.success!==true||!/^FAIR-[a-f0-9-]{36}$/.test(r.lead_id||'')||!['pending','processing','completed','failed'].includes(r.processing_status)||!(r.email_status===null||['pending','leased','sending','delivered','uncertain','failed'].includes(r.email_status)))return [{json:unavailable}];const body={success:true};for(const k of ['lead_id','processing_status','processing_attempts','next_retry_at','last_error_code','review_required','score_band','score_total','email_status','email_next_retry_at','updated_at'])body[k]=r[k]??null;return [{json:{http_status:200,response_body:body}}];"
+      }
+    },
+    {
+      "id": "9850c2df-1635-4a91-ab42-584a8b0e54ad",
+      "name": "Return Status",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1240,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.response_body }}",
+        "options": {
+          "responseCode": "={{ $json.http_status }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              {
+                "name": "X-Content-Type-Options",
+                "value": "nosniff"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Status Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Status Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Status Request": {
+      "main": [
+        [
+          {
+            "node": "Status Request Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status Request Valid?": {
+      "main": [
+        [
+          {
+            "node": "Read Processing Status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Safe Status Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Processing Status": {
+      "main": [
+        [
+          {
+            "node": "Build Safe Status Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Safe Status Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Safe Status Response": {
+      "main": [
+        [
+          {
+            "node": "Return Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 120,
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false,
+    "timezone": "Europe/Berlin"
+  },
+  "pinData": {}
+}

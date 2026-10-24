@@ -1,0 +1,185 @@
+{
+  "id": "messeHubDaten",
+  "name": "Messe-Hub — Daten fürs Dashboard",
+  "active": false,
+  "nodes": [
+    {
+      "id": "81380d10-dc13-4f11-b87d-8455cc1b33f8",
+      "name": "Daten anfordern",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "messe-hub/daten",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "webhookId": "3f6c2a91-7d4e-4b08-9c55-1e2f8a6b0d47",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "B4iZuLHbVDbetvVd",
+          "name": "Messe-Hub Login"
+        }
+      }
+    },
+    {
+      "id": "28a42906-a1f2-4bf1-8960-b84368d0eb7f",
+      "name": "Leads lesen",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE(json_agg(x ORDER BY x.created_at DESC), '[]'::json) AS leads FROM (\n  SELECT s.lead_id, s.source, s.created_at, s.duplicate_status, s.processing_status, s.processing_attempts,\n         s.last_error_code, s.review_required, s.uncertainty_flags, s.company_id, s.contact_id,\n         s.normalized_payload AS daten, co.company_name, co.website, ct.contact_name, ct.email, ct.phone,\n         trade_fair.get_lead_status(s.lead_id, s.submission_id) AS status\n  FROM trade_fair.lead_submissions s\n  JOIN trade_fair.companies co ON co.company_id = s.company_id\n  LEFT JOIN trade_fair.contacts ct ON ct.contact_id = s.contact_id\n  ORDER BY s.created_at DESC\n  LIMIT 2000\n) x;",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "VFKanUw3F67SJeqO",
+          "name": "Sergii SQL trade fair assistant"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "3692ccc6-4576-42e4-b027-f9bd4dcd6bff",
+      "name": "Gruppen-Verlauf lesen",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Messe-Hub Gruppen-Verlauf",
+          "cachedResultName": "Messe-Hub Gruppen-Verlauf"
+        },
+        "returnAll": true,
+        "filters": {}
+      },
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "a90743cd-cabc-4a5d-bbba-f729de094e73",
+      "name": "Dashboard-Daten bauen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Messe-Hub: turns one row of Sergii's lead_submissions (joined with companies/contacts and get_lead_status) into a dashboard lead.\nconst INTERESSE = { leadership: 'Führung', communication: 'Kommunikation', sales: 'Vertrieb', project_management: 'Projektmanagement', digital_skills: 'Digitale Kompetenzen', ai_automation: 'KI & Automatisierung', other: 'Sonstiges' };\nconst BUDGET = { approved: 'Genehmigt', planned: 'Geplant', unknown: 'Unklar', not_disclosed: 'Nicht genannt', no_budget: 'Kein Budget' };\nconst FOLLOW_UP = { within_one_week: 'Innerhalb 1 Woche', within_two_weeks: 'Innerhalb 2 Wochen', within_one_month: 'Innerhalb 1 Monat', on_date: 'Zum Termin', no_follow_up: 'Kein Follow-up', not_decided: 'Noch offen' };\nconst KATEGORIE = { HOT: 'A', WARM: 'B', COLD: 'C' };\nconst VERARBEITUNG = { pending: 'Wartet', processing: 'In Bearbeitung', completed: 'Fertig', failed: 'Fehler' };\nconst EMAIL_STATUS = { pending: 'Wartet', leased: 'Wird vorbereitet', sending: 'Wird gesendet', delivered: 'Gesendet', uncertain: 'Unklar – prüfen', failed: 'Fehlgeschlagen' };\nconst DUPLIKAT = { NEW: 'Neu', POSSIBLE_DUPLICATE: 'Mögliches Duplikat', EXISTING_CONTACT: 'Bekannter Kontakt' };\nconst GRUND = { training_interest: 'Trainingsinteresse', budget: 'Budget', follow_up: 'Follow-up', contactability: 'Erreichbarkeit', meeting_notes: 'Gesprächsnotiz', website: 'Website' };\nconst BASIS = { missing: 'fehlt', provided: 'vorhanden', provided_unverified: 'angegeben, nicht geprüft', email_or_phone_provided_unverified: 'E-Mail oder Telefon angegeben', name_only: 'nur Name', none: 'keine Angabe' };\n\n// Copied from Sergii's processing library (scoreLead, version 1.0), so the dashboard explains the score exactly like WF-B computes it.\nfunction scoreLead(lead) {\n  // Version1.0: only captured structured fields and note presence earn points.\n  // AI output and search ranking can never change the score.\n  const breakdown = [];\n  const add = (code,points,basis) => breakdown.push({code,points,basis});\n  add('training_interest',!lead.training_interest ? 0 : lead.training_interest === 'other' ? 15 : 25,lead.training_interest ?? 'missing');\n  add('budget',{approved:25,planned:15,unknown:5,not_disclosed:5,no_budget:0}[lead.budget_status] ?? 0,lead.budget_status ?? 'missing');\n  let follow = {within_one_week:20,within_two_weeks:15,within_one_month:10}[lead.follow_up] ?? 0;\n  if (lead.follow_up === 'on_date' && /^\\d{4}-\\d{2}-\\d{2}$/.test(lead.follow_up_date ?? '')) {\n    const reference = Date.parse(String(lead.captured_at).slice(0,10)+'T00:00:00Z');\n    const delta = (Date.parse(lead.follow_up_date+'T00:00:00Z')-reference)/86400000;\n    follow = !Number.isFinite(delta) ? 0 : delta <= 7 ? 20 : delta <= 14 ? 15 : delta <= 30 ? 10 : 5;\n  }\n  add('follow_up',follow,lead.follow_up === 'on_date' ? lead.follow_up_date : lead.follow_up ?? 'missing');\n  add('contactability',lead.email || lead.phone ? 15 : lead.contact_name ? 5 : 0,lead.email || lead.phone ? 'email_or_phone_provided_unverified' : lead.contact_name ? 'name_only' : 'none');\n  add('meeting_notes',typeof lead.notes === 'string' && [...lead.notes].length >= 10 ? 10 : 0,lead.notes ? 'provided' : 'missing');\n  add('website',lead.website ? 5 : 0,lead.website ? 'provided_unverified' : 'missing');\n  const total = breakdown.reduce((sum,x)=>sum+x.points,0);\n  return {total,band:total >= 70 ? 'HOT' : total >= 40 ? 'WARM' : 'COLD',version:'1.0',breakdown};\n}\n\nfunction faelligAm(lead) {\n  if (lead.follow_up === 'on_date' && /^\\d{4}-\\d{2}-\\d{2}$/.test(lead.follow_up_date || '')) return lead.follow_up_date;\n  const tage = { within_one_week: 7, within_two_weeks: 14, within_one_month: 30 }[lead.follow_up];\n  if (!tage || !lead.captured_at) return null;\n  const datum = new Date(lead.captured_at);\n  if (isNaN(datum)) return null;\n  datum.setUTCDate(datum.getUTCDate() + tage);\n  return datum.toISOString().slice(0, 10);\n}\n\nfunction naechsterSchritt(lead) {\n  const wer = lead.contact_name || 'Ansprechpartner';\n  switch (lead.follow_up) {\n    case 'within_one_week': return wer + ' innerhalb einer Woche kontaktieren';\n    case 'within_two_weeks': return wer + ' innerhalb von zwei Wochen kontaktieren';\n    case 'within_one_month': return wer + ' innerhalb eines Monats kontaktieren';\n    case 'on_date': return wer + ' zum vereinbarten Termin kontaktieren';\n    case 'no_follow_up': return 'Kein Follow-up gewünscht';\n    default: return 'Follow-up festlegen';\n  }\n}\n\nfunction leadAusZeile(z) {\n  const d = z.daten || {};\n  const st = z.status && z.status.success ? z.status : {};\n  const lead = {\n    training_interest: d.training_interest || null, budget_status: d.budget_status || null,\n    follow_up: d.follow_up || null, follow_up_date: d.follow_up_date || null, captured_at: z.created_at || null,\n    email: d.email || z.email || null, phone: d.phone || z.phone || null, contact_name: d.contact_name || z.contact_name || null,\n    notes: d.notes || null, website: d.website || z.website || null,\n  };\n  const bewertung = scoreLead(lead);\n  const ausDb = st.score_band && st.score_total !== null && st.score_total !== undefined;\n  const score = ausDb ? Number(st.score_total) : bewertung.total;\n  return {\n    lead_id: z.lead_id,\n    firma: d.company_name || z.company_name || '',\n    kontakt: lead.contact_name || '',\n    email: lead.email || '',\n    telefon: lead.phone || '',\n    website: lead.website || '',\n    interesse: INTERESSE[lead.training_interest] || '',\n    budget: BUDGET[lead.budget_status] || '',\n    follow_up: FOLLOW_UP[lead.follow_up] || '',\n    faellig_am: faelligAm(lead),\n    naechster_schritt: naechsterSchritt(lead),\n    notiz: d.notes || '',\n    kategorie: KATEGORIE[ausDb ? st.score_band : bewertung.band] || '',\n    score,\n    vorlaeufig: !ausDb,\n    verarbeitung: VERARBEITUNG[z.processing_status] || z.processing_status || '',\n    verarbeitung_code: z.processing_status || '',\n    email_status: EMAIL_STATUS[st.email_status] || '',\n    email_code: st.email_status || '',\n    duplikat: DUPLIKAT[z.duplicate_status] || z.duplicate_status || '',\n    duplikat_code: z.duplicate_status || '',\n    pruefen: Boolean(st.review_required ?? z.review_required),\n    fehler: z.last_error_code || st.last_error_code || '',\n    versuche: z.processing_attempts || 0,\n    unsicherheiten: Array.isArray(z.uncertainty_flags) ? z.uncertainty_flags : [],\n    erfasst: z.created_at || null,\n    quelle: z.source || '',\n    company_id: z.company_id || '',\n    contact_id: z.contact_id || '',\n    gruende: bewertung.breakdown.map((b) => ({\n      grund: (GRUND[b.code] || b.code) + ': ' + (INTERESSE[b.basis] || BUDGET[b.basis] || FOLLOW_UP[b.basis] || BASIS[b.basis] || b.basis),\n      punkte: b.points,\n    })),\n    gruppe_id: '',\n    haupt: false,\n    gruppe_groesse: 0,\n  };\n}\n\n// Messe-Hub: rebuilds merge groups from the append-only history table \"Messe-Hub Gruppen-Verlauf\".\n// Rows are never updated or deleted; merging, splitting and ignoring are events, so every step stays traceable and reversible.\nfunction gruppenAusVerlauf(zeilen) {\n  const ereignisse = zeilen\n    .filter((z) => z && z.gruppe_id && z.aktion)\n    .sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0) || String(a.zeitpunkt).localeCompare(String(b.zeitpunkt)));\n  const liste = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);\n  const gruppen = new Map();\n  const ignoriert = new Set();\n  for (const e of ereignisse) {\n    const ids = liste(e.lead_ids);\n    if (e.aktion === 'zusammengefuehrt') {\n      liste(e.ersetzt).forEach((alt) => gruppen.delete(alt));\n      gruppen.set(e.gruppe_id, { gruppe_id: e.gruppe_id, lead_ids: ids, haupt_lead_id: ids.includes(e.haupt_lead_id) ? e.haupt_lead_id : ids[0], grund: e.grund || '', von: e.von || '', zeitpunkt: e.zeitpunkt || '' });\n    } else if (e.aktion === 'getrennt') {\n      gruppen.delete(e.gruppe_id);\n    } else if (e.aktion === 'herausgeloest') {\n      const g = gruppen.get(e.gruppe_id);\n      if (!g) continue;\n      g.lead_ids = g.lead_ids.filter((x) => !ids.includes(x));\n      if (!g.lead_ids.includes(g.haupt_lead_id)) g.haupt_lead_id = g.lead_ids[0];\n      if (g.lead_ids.length < 2) gruppen.delete(e.gruppe_id);\n    } else if (e.aktion === 'ignoriert') {\n      ignoriert.add(ids.slice().sort().join(','));\n    }\n  }\n  return { gruppen: [...gruppen.values()], ignoriert, ereignisse };\n}\n\n\n// Leads from the same company that are not yet one group become merge suggestions, unless the admin ignored exactly this set.\nfunction vorschlaege(leads, gruppen, ignoriert) {\n  const gruppeVon = new Map();\n  gruppen.forEach((g) => g.lead_ids.forEach((id) => gruppeVon.set(id, g.gruppe_id)));\n  const proFirma = new Map();\n  leads.forEach((l) => {\n    const k = l.company_id || l.firma.toLowerCase();\n    if (!proFirma.has(k)) proFirma.set(k, []);\n    proFirma.get(k).push(l);\n  });\n  const out = [];\n  for (const liste of proFirma.values()) {\n    if (liste.length < 2) continue;\n    if (new Set(liste.map((l) => gruppeVon.get(l.lead_id) || l.lead_id)).size < 2) continue;\n    const ids = liste.map((l) => l.lead_id).sort();\n    if (ignoriert.has(ids.join(','))) continue;\n    const gruende = ['Gleiche Firma'];\n    const kontakte = liste.map((l) => l.contact_id).filter(Boolean);\n    const mails = liste.map((l) => l.email.toLowerCase()).filter(Boolean);\n    if (new Set(kontakte).size < kontakte.length || new Set(mails).size < mails.length) gruende.push('gleicher Kontakt');\n    if (liste.some((l) => l.duplikat_code && l.duplikat_code !== 'NEW')) gruende.push('von Sergiis Duplikatprüfung markiert');\n    out.push({ schluessel: ids.join(','), firma: liste[0].firma, lead_ids: ids, gruende, sicherheit: gruende.length >= 2 ? 'hoch' : 'mittel' });\n  }\n  return out;\n}\n\nconst zeilen = $('Leads lesen').first().json.leads || [];\nconst { gruppen, ignoriert, ereignisse } = gruppenAusVerlauf($input.all().map((i) => i.json));\nconst leads = zeilen.map(leadAusZeile);\nconst index = new Map(leads.map((l) => [l.lead_id, l]));\n\n// Groups only count leads that still exist in Sergii's database.\nconst gueltig = gruppen\n  .map((g) => ({ ...g, lead_ids: g.lead_ids.filter((id) => index.has(id)) }))\n  .filter((g) => g.lead_ids.length >= 2);\ngueltig.forEach((g) => {\n  if (!g.lead_ids.includes(g.haupt_lead_id)) g.haupt_lead_id = g.lead_ids[0];\n  g.lead_ids.forEach((id) => Object.assign(index.get(id), { gruppe_id: g.gruppe_id, haupt: id === g.haupt_lead_id, gruppe_groesse: g.lead_ids.length }));\n});\n\nreturn [{\n  json: {\n    aktualisiert: new Date().toISOString(),\n    leads,\n    gruppen: gueltig,\n    vorschlaege: vorschlaege(leads, gueltig, ignoriert),\n    verlauf: ereignisse.slice(-200).reverse().map((e) => ({ zeitpunkt: e.zeitpunkt, aktion: e.aktion, gruppe_id: e.gruppe_id, lead_ids: e.lead_ids, haupt_lead_id: e.haupt_lead_id, grund: e.grund, von: e.von })),\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "06baeea1-75de-49ff-ad02-3b98153da43a",
+      "name": "Daten senden",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "3e2d79d9-9776-44e2-9fe4-49e453ef0e07",
+      "name": "Notiz 21dab7",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ],
+      "parameters": {
+        "content": "## Messe-Hub — Daten fürs Dashboard\nLiefert dem Admin-Dashboard alle Leads aus **Sergiis Neon-Datenbank** (nur lesend) plus Zusammenführungen aus der Datentabelle **Messe-Hub Gruppen-Verlauf**.\n\n- Geschützt mit Basic Auth **Messe-Hub Login**\n- Kategorie/Punkte aus Sergiis `get_lead_status`; vor der Verarbeitung vorläufig mit seiner Score-Funktion berechnet\n- KI-Zusammenfassung/Recherche fehlen: Tabelle `processing_results` ist für unsere Rolle gesperrt\n- Erfolgreiche Läufe werden nicht gespeichert (Dashboard fragt alle 30 s)",
+        "width": 520,
+        "height": 280,
+        "color": 7
+      }
+    }
+  ],
+  "connections": {
+    "Daten anfordern": {
+      "main": [
+        [
+          {
+            "node": "Leads lesen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leads lesen": {
+      "main": [
+        [
+          {
+            "node": "Gruppen-Verlauf lesen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gruppen-Verlauf lesen": {
+      "main": [
+        [
+          {
+            "node": "Dashboard-Daten bauen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dashboard-Daten bauen": {
+      "main": [
+        [
+          {
+            "node": "Daten senden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Berlin",
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": true
+  },
+  "pinData": {}
+}
