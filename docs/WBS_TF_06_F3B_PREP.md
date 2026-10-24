@@ -1,6 +1,6 @@
-# WBS-TF-06 — HTTPS Gateway and Gate F3B preparation (R2)
+# WBS-TF-06 — HTTPS Gateway and Gate F3B preparation (R3)
 
-Scope: design + preparation only. No production change. Supersedes R1
+Scope: design + preparation only. No production change. Supersedes R2
 after the independent Codex review in
 `docs/WBS_TF_06_INDEPENDENT_F3B_REVIEW.md` (PR #6). Companion to the
 Codex review in `docs/WBS_TF_05_INDEPENDENT_REVIEW.md` (PR #4). The
@@ -90,8 +90,9 @@ been swapped and loopback-accepted**.
   X-Forwarded-\* preserved, no path rewrite. Ships **without** HSTS;
   the staged HSTS lines are commented in place and enabled only after
   external HTTPS acceptance (§7).
-- All three files pass `nginx -t` on an isolated nginx 1.24 harness with
-  a self-signed stand-in cert; see `ops/nginx/syntax_check_evidence.txt`.
+- All three files pass `nginx -t` individually using the checked-in
+  `ops/nginx/check_vhosts.sh` offline harness and its temporary test cert;
+  see `ops/nginx/syntax_check_r3_evidence.txt`.
   A production `nginx -t` run is required after each file change.
 - Request paths are preserved end to end. The final file alone reaches
   these Gateway routes (`gateway/server.mjs:333-421`):
@@ -149,9 +150,12 @@ been swapped and loopback-accepted**.
   `ops/compose/production.yaml` or a reviewed `docker run` recipe) that
   preserves the fields recorded in the baseline inspect: `HOST=127.0.0.1`,
   `PORT=3000`, `NetworkMode=host`, `RestartPolicy=unless-stopped`,
-  env-file at `/opt/wbs-trade-fair/secrets/gateway.env`, no bind mounts
+  candidate env-file at
+  `/opt/wbs-trade-fair/secrets/gateway.dashboard.env`, no bind mounts
   under `/app`.
-- **Private env file.** `/opt/wbs-trade-fair/secrets/gateway.env` with
+- **Private candidate env file.** Keep the existing
+  `/opt/wbs-trade-fair/secrets/gateway.env` unchanged. Prepare
+  `/opt/wbs-trade-fair/secrets/gateway.dashboard.env` separately with
   mode 0600 and root ownership. Shape in
   `ops/env/gateway.production.env.example`. Minimum changes vs. the
   live file:
@@ -162,32 +166,64 @@ been swapped and loopback-accepted**.
   Keep the current `TRADE_FAIR_ACCESS_KEY`, `SESSION_SECRET`,
   `N8N_HEADER_KEY`, `N8N_CAPTURE_URL`, `N8N_STATUS_URL` unless the owner
   decides to rotate.
-- **Baseline capture (secrets-safe).** Save, under `umask 077` into
-  `/opt/wbs-trade-fair/secrets/backups/<YYYYMMDD-HHMM>/`:
-  - `docker inspect wbs-trade-fair-gateway > inspect.json`
-  - `docker image inspect $(docker inspect -f '{{.Image}}'
-     wbs-trade-fair-gateway) > image.json`
-  - `cp /opt/wbs-trade-fair/secrets/gateway.env env.pre`
-  - `sudo nginx -T > nginx-pre.conf`
-  All four files are 0600 root. They never land in Git, PR text, chat
-  logs or the backup container's mount. Delete the directory after the
-  owner-defined retention window.
+- **Baseline capture (secrets-safe).** Before creating or editing the
+  candidate env, open a root shell and run this block. It defines
+  `TF_ROLLOUT_TS` once and records it privately for a later rollback shell:
+  ```bash
+  set -euo pipefail
+  umask 077
+  TF_ROLLOUT_TS=$(date -u +%Y%m%dT%H%M%SZ)
+  TF_BACKUP_DIR="/opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}"
+  install -d -m 0700 "$TF_BACKUP_DIR"
+  printf '%s\n' "$TF_ROLLOUT_TS" > /opt/wbs-trade-fair/secrets/active-rollout-ts
+  docker inspect wbs-trade-fair-gateway > "$TF_BACKUP_DIR/inspect.json"
+  docker image inspect "$(docker inspect -f '{{.Image}}' wbs-trade-fair-gateway)" > "$TF_BACKUP_DIR/image.json"
+  cp -- /opt/wbs-trade-fair/secrets/gateway.env "$TF_BACKUP_DIR/env.pre"
+  nginx -T > "$TF_BACKUP_DIR/nginx-pre.conf" 2> "$TF_BACKUP_DIR/nginx-pre.stderr"
+  cmp -s -- "$TF_BACKUP_DIR/env.pre" /opt/wbs-trade-fair/secrets/gateway.env
+  test "$(stat -c %a "$TF_BACKUP_DIR/env.pre")" = 600
+  ```
+  A failed `cmp` or mode assertion is a **STOP**. The backup is made
+  from the original `gateway.env`, before candidate changes. These files
+  contain secrets and remain root-only, outside Git/PR/chat. Retain the
+  backup and the timestamp record through acceptance and rollback;
+  delete them only after the owner-defined retention window.
 - **Reversible swap.** Create the candidate container under a temporary
   name from the immutable image and private env, without starting it:
-  ```
+  ```bash
+  : "${TF_GATEWAY_IMAGE:?reviewed image digest or ID required}"
   docker create --name wbs-trade-fair-gateway.candidate \
     --network host --restart unless-stopped \
-    --env-file /opt/wbs-trade-fair/secrets/gateway.env \
-    <image@digest>
+    --env-file /opt/wbs-trade-fair/secrets/gateway.dashboard.env \
+    "$TF_GATEWAY_IMAGE"
   ```
-  In the approved window:
-  ```
+  Set `TF_GATEWAY_IMAGE` to the reviewed immutable image digest or image
+  ID before this command. In the approved window, continue in the same
+  root shell and assert the exact rollback inputs **before** stopping
+  the old container:
+  ```bash
+  : "${TF_ROLLOUT_TS:?recorded rollout timestamp required}"
+  : "${TF_GATEWAY_IMAGE:?reviewed image digest or ID required}"
+  test "$(cat /opt/wbs-trade-fair/secrets/active-rollout-ts)" = "$TF_ROLLOUT_TS"
+  test "$(docker inspect -f '{{.State.Running}}' wbs-trade-fair-gateway)" = true
+  test "$(docker inspect -f '{{.State.Running}}' wbs-trade-fair-gateway.candidate)" = false
+  test "$(docker inspect -f '{{len .Mounts}}' wbs-trade-fair-gateway.candidate)" = 0
+  test "$(docker inspect -f '{{.Image}}' wbs-trade-fair-gateway.candidate)" = "$(docker image inspect -f '{{.Id}}' "$TF_GATEWAY_IMAGE")"
+  test -r "/opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/env.pre"
+  test -f /opt/wbs-trade-fair/secrets/gateway.dashboard.env
+  test "$(stat -c %a /opt/wbs-trade-fair/secrets/gateway.dashboard.env)" = 600
+  cmp -s -- "/opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/env.pre" /opt/wbs-trade-fair/secrets/gateway.env
+  ! cmp -s -- /opt/wbs-trade-fair/secrets/gateway.dashboard.env /opt/wbs-trade-fair/secrets/gateway.env
+  ! docker container inspect "wbs-trade-fair-gateway.saved-${TF_ROLLOUT_TS}" >/dev/null 2>&1
+  ! docker container inspect "wbs-trade-fair-gateway.failed-${TF_ROLLOUT_TS}" >/dev/null 2>&1
+  test "$(curl -4 -sS -o /dev/null -w '%{http_code}' https://messe.klare-ki.de/)" = 503
   docker stop  wbs-trade-fair-gateway
-  docker rename wbs-trade-fair-gateway wbs-trade-fair-gateway.saved-<ts>
+  docker rename wbs-trade-fair-gateway "wbs-trade-fair-gateway.saved-${TF_ROLLOUT_TS}"
   docker rename wbs-trade-fair-gateway.candidate wbs-trade-fair-gateway
   docker start wbs-trade-fair-gateway
   ```
-  Keep `wbs-trade-fair-gateway.saved-<ts>` and the old image until
+  Any failed assertion is a **STOP**; do not run `docker stop`. Keep
+  `wbs-trade-fair-gateway.saved-${TF_ROLLOUT_TS}` and the old image until
   acceptance passes, so the rollback in §9 has deterministic names.
 
 ## 7. Acceptance tests (Gate F3B) and staged HSTS
@@ -215,6 +251,12 @@ new Gateway is correct in isolation.
 | Dashboard admin | login with the admin key via the right-Origin command above, then `curl -b` the saved cookie against `/dashboard` and `/api/dashboard?limit=10` | 200 for both, API JSON matching Dashboard contract |
 | Public form | `curl -sS -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:3000/api/public/leads` | 404 while `PUBLIC_FORM_ENABLED=false` |
 
+Assert the actual health response after the GET probe:
+
+```bash
+test "$(cat /tmp/h.json)" = '{"success":true,"service":"trade-fair-gateway"}'
+```
+
 Compare the recorded Set-Cookie to confirm `Secure` is present (it will
 be, because `APP_ORIGIN` is now `https://…`).
 
@@ -235,6 +277,12 @@ rollback immediately.
 | POST method | `-X POST https://messe.klare-ki.de/api/dashboard` | 405 `REQUEST_REJECTED` |
 | Capture/status | existing form POST and GET flows | behave as current live gateway, WF-A–D unchanged |
 
+Repeat the exact health body assertion after the external GET probe:
+
+```bash
+test "$(cat /tmp/h.json)" = '{"success":true,"service":"trade-fair-gateway"}'
+```
+
 ### 7.3 Staged HSTS
 
 Enable only after §7.2 passes end-to-end:
@@ -249,8 +297,9 @@ Enable only after §7.2 passes end-to-end:
    `sudo nginx -t && sudo systemctl reload nginx`.
 
 Both lines are host-only (no `includeSubDomains`, no `preload`). Per
-RFC 6797, this HSTS policy applies to `messe.klare-ki.de` and its
-sub-labels only — never to `mcp.`, `n5n.` or any other sibling host.
+RFC 6797, this HSTS policy applies to the exact
+`messe.klare-ki.de` host only — not to its sub-labels or sibling hosts
+such as `mcp.` and `n5n.`.
 `includeSubDomains` is deliberately not used because the owner has not
 committed every future `*.messe.klare-ki.de` label to HTTPS.
 
@@ -297,9 +346,18 @@ place.
 
 ## 9. Rollback
 
-Three independent layers. Owner picks the lowest layer that recovers.
+Three coordinated layers. Owner picks the lowest layer that recovers.
 Rollback steps always first restore the holding HTTPS vhost (so the
 old Gateway's HTTP-only `APP_ORIGIN` is never presented behind HTTPS).
+In a new root shell, load the original timestamp from the private
+record once, then use that same value throughout:
+
+```bash
+set -euo pipefail
+TF_ROLLOUT_TS=$(cat /opt/wbs-trade-fair/secrets/active-rollout-ts)
+: "${TF_ROLLOUT_TS:?recorded rollout timestamp required}"
+test -r "/opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/env.pre"
+```
 
 **Layer A — abort before Gateway swap.** The final proxy vhost is not
 yet installed; the HTTPS holding vhost is in place.
@@ -312,11 +370,36 @@ yet installed; the HTTPS holding vhost is in place.
 **Layer B — Gateway swap failed loopback acceptance.** The final proxy
 vhost is still **not** installed; the HTTPS holding vhost is live. The
 new container exists under the name `wbs-trade-fair-gateway`, and the
-saved container is at `wbs-trade-fair-gateway.saved-<ts>`.
+saved container is at `wbs-trade-fair-gateway.saved-${TF_ROLLOUT_TS}`.
+If the swap stopped partway through **before** the candidate acquired
+the main name, recover the old container according to the observed names:
+```bash
+: "${TF_ROLLOUT_TS:?recorded rollout timestamp required}"
+test "$(curl -4 -sS -o /dev/null -w '%{http_code}' https://messe.klare-ki.de/)" = 503
+if docker container inspect wbs-trade-fair-gateway >/dev/null 2>&1 &&
+   ! docker container inspect "wbs-trade-fair-gateway.saved-${TF_ROLLOUT_TS}" >/dev/null 2>&1; then
+  docker start wbs-trade-fair-gateway
+elif ! docker container inspect wbs-trade-fair-gateway >/dev/null 2>&1 &&
+     docker container inspect "wbs-trade-fair-gateway.saved-${TF_ROLLOUT_TS}" >/dev/null 2>&1; then
+  docker rename "wbs-trade-fair-gateway.saved-${TF_ROLLOUT_TS}" wbs-trade-fair-gateway
+  docker start wbs-trade-fair-gateway
+else
+  printf '%s\n' 'STOP: container names do not match a partial swap' >&2
+  exit 1
+fi
 ```
+Stop and inspect if neither case matches. Once the candidate has the
+main name, use the normal Layer B rollback below.
+Stop if any preflight assertion fails:
+```bash
+: "${TF_ROLLOUT_TS:?recorded rollout timestamp required}"
+test "$(curl -4 -sS -o /dev/null -w '%{http_code}' https://messe.klare-ki.de/)" = 503
+docker container inspect "wbs-trade-fair-gateway.saved-${TF_ROLLOUT_TS}" >/dev/null
+! docker container inspect "wbs-trade-fair-gateway.failed-${TF_ROLLOUT_TS}" >/dev/null 2>&1
+docker container inspect wbs-trade-fair-gateway >/dev/null
 docker stop   wbs-trade-fair-gateway
-docker rename wbs-trade-fair-gateway        wbs-trade-fair-gateway.failed-<ts>
-docker rename wbs-trade-fair-gateway.saved-<ts> wbs-trade-fair-gateway
+docker rename wbs-trade-fair-gateway "wbs-trade-fair-gateway.failed-${TF_ROLLOUT_TS}"
+docker rename "wbs-trade-fair-gateway.saved-${TF_ROLLOUT_TS}" wbs-trade-fair-gateway
 docker start  wbs-trade-fair-gateway
 curl -sS -o /tmp/h.json -w 'http=%{http_code}\n' \
   http://127.0.0.1:3000/healthz        # expect 200 + original JSON
@@ -325,14 +408,16 @@ Nothing changes in nginx; HTTPS stays on the holding 503.
 
 **Layer C — final proxy vhost failed external HTTPS acceptance.** The
 final proxy vhost is live; the new Gateway is running.
-```
+```bash
+: "${TF_ROLLOUT_TS:?recorded rollout timestamp required}"
+test -f /etc/nginx/sites-available/messe.klare-ki.de
+test -r ops/nginx/messe.klare-ki.de.https-holding.conf
 sudo cp /etc/nginx/sites-available/messe.klare-ki.de \
-  /etc/nginx/sites-available/messe.klare-ki.de.bak-<ts>-f3b
+  "/etc/nginx/sites-available/messe.klare-ki.de.bak-${TF_ROLLOUT_TS}-f3b"
 sudo cp ops/nginx/messe.klare-ki.de.https-holding.conf \
   /etc/nginx/sites-available/messe.klare-ki.de
 sudo nginx -t && sudo systemctl reload nginx
-curl -4 -sS -o /dev/null -w 'http=%{http_code}\n' https://messe.klare-ki.de/
-# expect 503
+test "$(curl -4 -sS -o /dev/null -w '%{http_code}' https://messe.klare-ki.de/)" = 503
 ```
 Then, if the Gateway must also roll back (e.g. for Dashboard behavior
 or a DB fault), execute Layer B. Order matters: nginx first, then
@@ -347,7 +432,7 @@ HTTP-origin-only Gateway behind HTTPS and break form login.
   `DASHBOARD_DATABASE_URL` (i.e. after `DASHBOARD_ENABLED=false`
   recreate). The staging-only `sql/dashboard_staging_rollback.sql` must
   not run against production.
-- Delete `/opt/wbs-trade-fair/secrets/backups/<ts>/` after the owner's
+- Delete `/opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/` after the owner's
   retention window; it contains the pre-cutover env file.
 
 ## 10. Production rollout runbook (owner-approved execution)
@@ -395,31 +480,44 @@ and go to §9. Each step names the exact probe commands.
    only to the new role. Verify WF-A–D ACLs unchanged. Capture an
    immediate post-install catalog snapshot (owner, prosecdef, provolatile,
    search_path, ACL) to the owner backup directory.
-7. **Private env.** Write `/opt/wbs-trade-fair/secrets/gateway.env` with
-   mode 0600 per §6. Validate the file does not contain any staging host.
-8. **Image + baseline.** Build the production image from the reviewed
-   SHA using `Dockerfile.dashboard-staging`; record the digest. Save
-   the baseline inspect dumps per §6 into
-   `/opt/wbs-trade-fair/secrets/backups/<ts>/` (umask 077).
-9. **Gateway swap.** Execute §6 "reversible swap". After `docker start`,
+7. **Baseline before candidate.** Run the §6 root-shell baseline block
+   now, while `gateway.env` is still the original. Verify the backup with
+   `cmp` and save `TF_ROLLOUT_TS`; any failure is a STOP.
+8. **Candidate env.** Copy the original to
+   `/opt/wbs-trade-fair/secrets/gateway.dashboard.env`, edit only that
+   private 0600 file per §6, and confirm it contains no staging host.
+   Leave `gateway.env` unchanged and verify this again before the swap.
+   In the same root shell, create the distinct file before editing it:
+   ```bash
+   test ! -e /opt/wbs-trade-fair/secrets/gateway.dashboard.env
+   cp -- /opt/wbs-trade-fair/secrets/gateway.env /opt/wbs-trade-fair/secrets/gateway.dashboard.env
+   chmod 0600 /opt/wbs-trade-fair/secrets/gateway.dashboard.env
+   cmp -s -- "$TF_BACKUP_DIR/env.pre" /opt/wbs-trade-fair/secrets/gateway.dashboard.env
+   ```
+   A failed comparison is a STOP. Edit only `gateway.dashboard.env`
+   through the approved secret-handling process; never print its values.
+9. **Image.** Build the production image from the reviewed SHA using
+   `Dockerfile.dashboard-staging`; record its digest/ID. Assign the exact
+   reviewed image reference to `TF_GATEWAY_IMAGE` in the same root shell.
+10. **Gateway swap.** Execute §6 "reversible swap". After `docker start`,
    wait up to 10 s, then run §7.1 loopback acceptance.
-10. **Final proxy vhost.** Only after §7.1 passes:
+11. **Final proxy vhost.** Only after §7.1 passes:
     ```
     sudo cp ops/nginx/messe.klare-ki.de.conf \
       /etc/nginx/sites-available/messe.klare-ki.de
     sudo nginx -t && sudo systemctl reload nginx
     ```
-11. **External HTTPS acceptance.** Run §7.2 from outside the VPS.
-12. **Staged HSTS.** Enable per §7.3 only after §7.2 passes.
-13. **IPv6 (optional).** Follow §8 end to end. If any step fails, do
+12. **External HTTPS acceptance.** Run §7.2 from outside the VPS.
+13. **Staged HSTS.** Enable per §7.3 only after §7.2 passes.
+14. **IPv6 (optional).** Follow §8 end to end. If any step fails, do
     not publish AAAA; declare rollout complete over IPv4.
 
 ## 11. STOP conditions
 
 Owner must stop and page back to this packet if any of these holds:
 
-- `dig @sid.ns.cloudflare.com messe.klare-ki.de A|AAAA` disagrees with
-  §2.
+- Either separate authoritative A or AAAA query in §2 disagrees with
+  the approved DNS state.
 - Any pre-existing enabled vhost under `/etc/nginx/sites-enabled/` lists
   `messe.klare-ki.de` on `server_name`.
 - `nginx -t` ever returns non-zero.
@@ -442,8 +540,10 @@ Independent review targets:
   duplication, path preservation, security posture and compatibility
   with the Gateway's own headers (`gateway/server.mjs:94-100,186,268`).
 - `ops/env/gateway.production.env.example` — shape only, no secrets.
-- `ops/nginx/syntax_check_evidence.txt` — the three `nginx -t` runs on
-  an isolated nginx 1.24 container with a self-signed stand-in cert.
+- `ops/nginx/check_vhosts.sh` — the three `nginx -t` runs on isolated
+  nginx 1.24 containers with a disposable test certificate.
+- `ops/nginx/syntax_check_r3_evidence.txt` — sanitized script and Node
+  regression results.
 - `docs/WBS_TF_06_F3B_PREP.md` (this file) — numbers against observed
   VPS/DNS state, independence of impact statements, and completeness of
   the rollout and rollback.
@@ -467,10 +567,9 @@ ssh klare-ki "docker inspect wbs-trade-fair-gateway \
             image={{.Image}}'"
 
 # Local syntax + regression + evidence
-docker run --rm -v $PWD/ops/nginx:/vhosts:ro nginx:1.24 \
-  nginx -t -c /dev/stdin <<< 'events{} http{ include /vhosts/*.conf; }'
+./ops/nginx/check_vhosts.sh
 node --test tests/*.mjs
-cat ops/nginx/syntax_check_evidence.txt
+cat ops/nginx/syntax_check_r3_evidence.txt
 ```
 
 The `.Config.Env` dump from the R1 version is deliberately removed: it
@@ -486,33 +585,42 @@ would otherwise force the review PRs onto the runtime chain.
 
 After PR #3 lands on `main`, the clean path is:
 
-1. Transplant the single corrected PR #5 commit (this R2 commit)
-   onto a new branch cut from the updated `main`:
-   `git checkout -b docs/wbs-tf-06-f3b-r2 origin/main`
-   `git cherry-pick <sha of R2 commit on PR #5>`.
-2. Open PR #7 against `main` with that commit, title
-   `docs(ops): WBS-TF-06 F3B packet (R2)`, linking PR #5 and PR #6.
-3. Close PR #4, PR #5 and PR #6 as drafts with cross-links to PR #7 and
-   to the production acceptance record. Nothing in the review history is
-   deleted; GitHub preserves them as closed Draft PRs.
+1. Freeze the three PR #5 commit SHAs (R1, R2, R3). After PR #3 lands
+   on `main`, cut a new documentation branch from updated `origin/main`.
+2. Transplant **all three** commits in order so every new file and every
+   correction is preserved. The R3 SHA is the reviewed PR #5 HEAD once
+   this R3 commit is published:
+   ```bash
+   TF_R3_SHA=$(git rev-parse origin/feat/wbs-tf-06-f3b-prep)
+   git switch -c docs/wbs-tf-06-f3b-r3 origin/main
+   git cherry-pick 577f1b06ef6997b077c09cac6a4dd1af14168a10 \
+     798e3035f53bb84bf95d647ff8e8cb416f5f07f8 "$TF_R3_SHA"
+   ```
+   As an alternative, apply one reviewed patch containing the complete
+   final PR #5 diff against its PR #4 base; verify the resulting tree is
+   byte-equivalent for the F3B packet.
+3. Open a separate documentation PR against updated `main`, linking
+   PR #5 and PR #6. Keep PR #4 and PR #6 as independent review records;
+   close their Draft PRs only after the owner chooses the documentation
+   disposition and the new PR preserves any desired review documents.
 
-If the owner prefers to keep review PRs discoverable from `main`, the
-alternative is to merge PR #4 and PR #6 as documentation after PR #3,
-then merge the retargeted PR #5. Either path is acceptable; the
-runbook ordering above does not depend on which is chosen.
+Do not merge PR #6 into `main`: its review branch descends from the
+earlier PR #5 R2 head and would pull implementation ancestry onto the
+review path while omitting R3.
 
 **No merge is part of this packet.** The runbook ordering (DNS → nginx
 bootstrap → cert → holding → migration → secrets → image → swap →
 loopback acceptance → final vhost → external acceptance → staged HSTS →
 optional IPv6) is independent of the PR integration path.
 
-## 14. Remaining owner approvals (nothing in this R2 is self-approving)
+## 14. Remaining owner approvals (nothing in this R3 is self-approving)
 
 - Cloudflare DNS: A already present (owner-created); AAAA pending §8.
 - nginx: install bootstrap vhost, run certbot, swap to HTTPS holding,
   swap to final proxy, enable staged HSTS.
-- Private secrets: write `/opt/wbs-trade-fair/secrets/gateway.env` and
-  the `backups/<ts>/` directory on the VPS.
+- Private secrets: prepare `gateway.dashboard.env` separately and save
+  the original `gateway.env` under
+  `/opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/` on the VPS.
 - Image: build and store the content-addressed production image.
 - Production Neon migration: owner-reviewed role + function install.
 - Gateway: reversible container swap.
@@ -520,3 +628,16 @@ optional IPv6) is independent of the PR integration path.
 - PR integration path (§13 option A or option B).
 
 No step above is authorized by this document.
+
+## 15. R3 correction map for independent review
+
+| Codex R2 finding | R3 correction |
+| --- | --- |
+| Original env backup was taken after candidate changes | §6 backs up and compares `gateway.env` before §10 creates separate `gateway.dashboard.env`. |
+| `<ts>` made cutover/rollback commands invalid | §6 records one `TF_ROLLOUT_TS`; §9 reloads that exact value and uses it in the saved/failed names. Preflight assertions precede `docker stop`. |
+| §12 nginx syntax command failed | `ops/nginx/check_vhosts.sh` tests each vhost with nginx 1.24 and a disposable certificate; sanitized results are committed. |
+| Bootstrap and HSTS prose were stale | Bootstrap points to HTTPS holding; §7 describes host-only HSTS as exact-host scope. |
+| R2-only cherry-pick omitted R1 files | §13 transplants R1, R2 and R3 in order onto a separate branch after PR #3 lands on `main`; PR #4/#6 stay review records. |
+
+This map is preparation evidence, not a claim that Gate F3B has been
+executed in production.
