@@ -1,0 +1,384 @@
+{
+  "id": "messeHubGruppen",
+  "name": "Messe-Hub — Leads zusammenführen/trennen",
+  "active": false,
+  "nodes": [
+    {
+      "id": "dc3cdd5b-8e8a-4482-a436-b8db78eb77eb",
+      "name": "Anfrage",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "messe-hub/gruppen",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "webhookId": "8a1d5e72-2c9b-4f63-a7e0-5b4c3d2e1f09",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "B4iZuLHbVDbetvVd",
+          "name": "Messe-Hub Login"
+        }
+      }
+    },
+    {
+      "id": "d009aeb4-228d-4b72-b42c-d64740da62cd",
+      "name": "Lead-IDs lesen",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE(json_agg(lead_id), '[]'::json) AS ids FROM trade_fair.lead_submissions;",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "VFKanUw3F67SJeqO",
+          "name": "Sergii SQL trade fair assistant"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "50ee951d-d35b-4bdf-85c1-ab69d7624171",
+      "name": "Gruppen-Verlauf lesen",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Messe-Hub Gruppen-Verlauf",
+          "cachedResultName": "Messe-Hub Gruppen-Verlauf"
+        },
+        "returnAll": true,
+        "filters": {}
+      },
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "962f870e-fc31-480a-b5e1-c33c027028a9",
+      "name": "Aktion prüfen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Messe-Hub: rebuilds merge groups from the append-only history table \"Messe-Hub Gruppen-Verlauf\".\n// Rows are never updated or deleted; merging, splitting and ignoring are events, so every step stays traceable and reversible.\nfunction gruppenAusVerlauf(zeilen) {\n  const ereignisse = zeilen\n    .filter((z) => z && z.gruppe_id && z.aktion)\n    .sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0) || String(a.zeitpunkt).localeCompare(String(b.zeitpunkt)));\n  const liste = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);\n  const gruppen = new Map();\n  const ignoriert = new Set();\n  for (const e of ereignisse) {\n    const ids = liste(e.lead_ids);\n    if (e.aktion === 'zusammengefuehrt') {\n      liste(e.ersetzt).forEach((alt) => gruppen.delete(alt));\n      gruppen.set(e.gruppe_id, { gruppe_id: e.gruppe_id, lead_ids: ids, haupt_lead_id: ids.includes(e.haupt_lead_id) ? e.haupt_lead_id : ids[0], grund: e.grund || '', von: e.von || '', zeitpunkt: e.zeitpunkt || '' });\n    } else if (e.aktion === 'getrennt') {\n      gruppen.delete(e.gruppe_id);\n    } else if (e.aktion === 'herausgeloest') {\n      const g = gruppen.get(e.gruppe_id);\n      if (!g) continue;\n      g.lead_ids = g.lead_ids.filter((x) => !ids.includes(x));\n      if (!g.lead_ids.includes(g.haupt_lead_id)) g.haupt_lead_id = g.lead_ids[0];\n      if (g.lead_ids.length < 2) gruppen.delete(e.gruppe_id);\n    } else if (e.aktion === 'ignoriert') {\n      ignoriert.add(ids.slice().sort().join(','));\n    }\n  }\n  return { gruppen: [...gruppen.values()], ignoriert, ereignisse };\n}\n\n\n// Only the user name of the Basic Auth login is kept (for \"von\"), never the password.\nfunction benutzer(headers) {\n  const h = String((headers && headers.authorization) || '');\n  if (!/^Basic\\s+/i.test(h)) return '';\n  try {\n    const roh = h.replace(/^Basic\\s+/i, '');\n    const text = typeof Buffer !== 'undefined' ? Buffer.from(roh, 'base64').toString('utf8') : atob(roh);\n    return text.split(':')[0].slice(0, 80);\n  } catch (e) {\n    return '';\n  }\n}\n\nconst anfrage = $('Anfrage').first().json;\nconst body = anfrage.body || {};\nconst vorhanden = new Set($('Lead-IDs lesen').first().json.ids || []);\nconst { gruppen } = gruppenAusVerlauf($input.all().map((i) => i.json));\nconst ID = /^FAIR-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;\nconst ids = [...new Set((Array.isArray(body.lead_ids) ? body.lead_ids : []).map(String).filter((x) => ID.test(x)))];\nconst grund = String(body.grund || '').replace(/\\s+/g, ' ').trim().slice(0, 300);\nconst von = benutzer(anfrage.headers);\nconst jetzt = new Date().toISOString();\nconst neueId = 'G-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);\nconst abgelehnt = (fehler) => [{ json: { ok: false, fehler } }];\nconst unbekannt = (liste) => liste.filter((x) => !vorhanden.has(x));\n\nlet zeile;\nlet meldung;\nswitch (body.aktion) {\n  case 'zusammenfuehren': {\n    if (ids.length < 2) return abgelehnt('Bitte mindestens zwei Leads auswählen.');\n    if (unbekannt(ids).length) return abgelehnt('Unbekannte Lead-ID: ' + unbekannt(ids).join(', '));\n    // Leads that already belong to groups pull their whole group into the new one.\n    const betroffen = gruppen.filter((g) => g.lead_ids.some((x) => ids.includes(x)));\n    const alle = [...new Set([...ids, ...betroffen.flatMap((g) => g.lead_ids)])];\n    const haupt = alle.includes(body.haupt_lead_id) ? body.haupt_lead_id : ((betroffen[0] && betroffen[0].haupt_lead_id) || ids[0]);\n    zeile = { gruppe_id: neueId, aktion: 'zusammengefuehrt', lead_ids: alle.join(','), haupt_lead_id: haupt, ersetzt: betroffen.map((g) => g.gruppe_id).join(','), grund: grund || 'Im Dashboard zusammengeführt', von, zeitpunkt: jetzt };\n    meldung = alle.length + ' Leads wurden zusammengeführt.';\n    break;\n  }\n  case 'trennen': {\n    const g = gruppen.find((x) => x.gruppe_id === body.gruppe_id);\n    if (!g) return abgelehnt('Diese Gruppe gibt es nicht (mehr).');\n    zeile = { gruppe_id: g.gruppe_id, aktion: 'getrennt', lead_ids: g.lead_ids.join(','), haupt_lead_id: g.haupt_lead_id, ersetzt: '', grund: grund || 'Im Dashboard getrennt', von, zeitpunkt: jetzt };\n    meldung = 'Gruppe getrennt – die ' + g.lead_ids.length + ' Leads stehen wieder einzeln in der Liste.';\n    break;\n  }\n  case 'herausloesen': {\n    const g = gruppen.find((x) => x.gruppe_id === body.gruppe_id);\n    const lead = String(body.lead_id || '');\n    if (!g || !g.lead_ids.includes(lead)) return abgelehnt('Dieser Lead ist nicht in der Gruppe.');\n    zeile = { gruppe_id: g.gruppe_id, aktion: 'herausgeloest', lead_ids: lead, haupt_lead_id: g.haupt_lead_id, ersetzt: '', grund: grund || 'Im Dashboard herausgelöst', von, zeitpunkt: jetzt };\n    meldung = g.lead_ids.length <= 2 ? 'Lead herausgelöst – die Gruppe ist damit aufgelöst.' : 'Lead aus der Gruppe herausgelöst.';\n    break;\n  }\n  case 'ignorieren': {\n    if (ids.length < 2) return abgelehnt('Ein Vorschlag braucht mindestens zwei Leads.');\n    if (unbekannt(ids).length) return abgelehnt('Unbekannte Lead-ID: ' + unbekannt(ids).join(', '));\n    zeile = { gruppe_id: neueId, aktion: 'ignoriert', lead_ids: ids.slice().sort().join(','), haupt_lead_id: '', ersetzt: '', grund: grund || 'Kein Duplikat', von, zeitpunkt: jetzt };\n    meldung = 'Vorschlag ausgeblendet.';\n    break;\n  }\n  default:\n    return abgelehnt('Unbekannte Aktion.');\n}\n\nreturn [{ json: { ok: true, meldung, gruppe_id: zeile.gruppe_id, zeile } }];\n"
+      }
+    },
+    {
+      "id": "06d45862-114a-46bb-a5ea-b51642277972",
+      "name": "Gültig?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "eb77b0f9-4aef-4fbd-9d55-23159e267d35",
+              "leftValue": "={{ $json.ok === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "5eaa6254-a728-4c1e-bc60-4b406a27d272",
+      "name": "Ereignis speichern",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        -100
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Messe-Hub Gruppen-Verlauf",
+          "cachedResultName": "Messe-Hub Gruppen-Verlauf"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "gruppe_id": "={{ $json.zeile.gruppe_id }}",
+            "aktion": "={{ $json.zeile.aktion }}",
+            "lead_ids": "={{ $json.zeile.lead_ids }}",
+            "haupt_lead_id": "={{ $json.zeile.haupt_lead_id }}",
+            "ersetzt": "={{ $json.zeile.ersetzt }}",
+            "grund": "={{ $json.zeile.grund }}",
+            "von": "={{ $json.zeile.von }}",
+            "zeitpunkt": "={{ $json.zeile.zeitpunkt }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "gruppe_id",
+              "displayName": "gruppe_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "aktion",
+              "displayName": "aktion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lead_ids",
+              "displayName": "lead_ids",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "haupt_lead_id",
+              "displayName": "haupt_lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ersetzt",
+              "displayName": "ersetzt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "grund",
+              "displayName": "grund",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "von",
+              "displayName": "von",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "zeitpunkt",
+              "displayName": "zeitpunkt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a5e0300f-6a05-4931-a9ef-2f99aeba00d0",
+      "name": "Erfolg melden",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1440,
+        -100
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, meldung: $('Aktion prüfen').first().json.meldung, gruppe_id: $('Aktion prüfen').first().json.gruppe_id }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "3eb0d4e0-7321-4073-8865-9925d12bc9ee",
+      "name": "Ablehnung melden",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1200,
+        120
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: false, fehler: $json.fehler }) }}",
+        "options": {
+          "responseCode": 422,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "6e24f068-0607-4e2c-8cfe-8273081b2dc9",
+      "name": "Notiz aa6168",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ],
+      "parameters": {
+        "content": "## Messe-Hub — Leads zusammenführen/trennen\nAktionen aus dem Admin-Dashboard: `zusammenfuehren`, `trennen`, `herausloesen`, `ignorieren`.\n\n- **Sergiis Datenbank bleibt unverändert** (unsere Rolle darf dort nichts ändern)\n- Jede Aktion wird als neue Zeile in **Messe-Hub Gruppen-Verlauf** angehängt, nie überschrieben → nachvollziehbar und umkehrbar\n- „von“ = Benutzername des Logins (Vorbereitung Mitarbeiter-Dashboard)",
+        "width": 520,
+        "height": 260,
+        "color": 7
+      }
+    }
+  ],
+  "connections": {
+    "Anfrage": {
+      "main": [
+        [
+          {
+            "node": "Lead-IDs lesen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead-IDs lesen": {
+      "main": [
+        [
+          {
+            "node": "Gruppen-Verlauf lesen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gruppen-Verlauf lesen": {
+      "main": [
+        [
+          {
+            "node": "Aktion prüfen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aktion prüfen": {
+      "main": [
+        [
+          {
+            "node": "Gültig?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gültig?": {
+      "main": [
+        [
+          {
+            "node": "Ereignis speichern",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ablehnung melden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ereignis speichern": {
+      "main": [
+        [
+          {
+            "node": "Erfolg melden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Berlin",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {}
+}

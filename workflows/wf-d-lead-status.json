@@ -1,0 +1,269 @@
+[
+  {
+    "updatedAt": "2026-10-24T10:20:48.131Z",
+    "createdAt": "2026-10-23T16:04:43.015Z",
+    "id": "THulrTbNEZ2FrgJ3",
+    "name": "WBS — Trade Fair Assistant — WF-D Lead Status",
+    "description": null,
+    "active": false,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "trade-fair/status",
+          "authentication": "headerAuth",
+          "responseMode": "responseNode",
+          "options": {
+            "allowedOrigins": "http://localhost:5678"
+          }
+        },
+        "id": "044aee53-4247-4bda-9822-418a0c3c3caf",
+        "name": "Status Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          -720,
+          112
+        ],
+        "webhookId": "9da9690e-92a2-4b98-a501-fb0df465abdb",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "tjqSy2V0odocljw6",
+            "name": "WBS Trade Fair — Gateway Auth"
+          }
+        },
+        "notes": "Internal gateway only. Same Header Auth credential as WF-A. Never expose this secret in the browser."
+      },
+      {
+        "parameters": {
+          "jsCode": "const b=$input.first().json.body;const valid=b&&typeof b==='object'&&!Array.isArray(b)&&Object.keys(b).length===2&&/^FAIR-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(b.lead_id||'')&&/^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/.test(b.submission_id||'');return [{json:valid?{valid:true,lead_id:b.lead_id,submission_id:b.submission_id}:{valid:false,http_status:400,response_body:{success:false,error:{code:'INVALID_STATUS_REQUEST',message:'A lead identifier and its submission identifier are required.'}}}}];"
+        },
+        "id": "58117e5e-0d72-44eb-b2a7-3d9ce589c41f",
+        "name": "Validate Status Request",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -480,
+          112
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "d1f06f8b-d315-4618-a8b7-de6cf2e3f5b8",
+                "leftValue": "={{ $json.valid === true }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "2cd8d307-5083-4917-a0b4-4f3c2a443769",
+        "name": "Status Request Valid?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          -240,
+          112
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT trade_fair.get_lead_status($1::text,$2::text) AS status_result;",
+          "options": {
+            "connectionTimeout": 10,
+            "queryBatching": "single",
+            "queryReplacement": "={{ [$json.lead_id,$json.submission_id] }}"
+          }
+        },
+        "id": "dd11c2a3-5dd4-446d-bc4c-d31eac1f07a7",
+        "name": "Read Processing Status",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          0,
+          0
+        ],
+        "alwaysOutputData": true,
+        "credentials": {
+          "postgres": {
+            "id": "DIm6w5CcndY0D3RJ",
+            "name": "WBS Trade Fair — Neon PostgreSQL"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const x=$input.first().json;const unavailable={http_status:503,response_body:{success:false,error:{code:'STATUS_UNAVAILABLE',message:'Status is temporarily unavailable.'}}};if(x.valid===false&&x.http_status===400)return [{json:x}];const r=x.status_result;if(r?.success===false&&r?.error?.code==='NOT_FOUND')return [{json:{http_status:404,response_body:{success:false,error:{code:'NOT_FOUND',message:'Lead not found.'}}}}];if(r?.success!==true||!/^FAIR-[a-f0-9-]{36}$/.test(r.lead_id||'')||!['pending','processing','completed','failed'].includes(r.processing_status)||!(r.email_status===null||['pending','leased','sending','delivered','uncertain','failed'].includes(r.email_status)))return [{json:unavailable}];const body={success:true};for(const k of ['lead_id','processing_status','processing_attempts','next_retry_at','last_error_code','review_required','score_band','score_total','email_status','email_next_retry_at','updated_at'])body[k]=r[k]??null;return [{json:{http_status:200,response_body:body}}];"
+        },
+        "id": "0d71d372-2d49-4f47-bd09-3db5a532d06f",
+        "name": "Build Safe Status Response",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          272,
+          112
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json.response_body }}",
+          "options": {
+            "responseCode": "={{ $json.http_status }}",
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "name": "Cache-Control",
+                  "value": "no-store"
+                },
+                {
+                  "name": "X-Content-Type-Options",
+                  "value": "nosniff"
+                }
+              ]
+            }
+          }
+        },
+        "id": "e5495e7e-1505-433e-8a56-ce8182c86ea6",
+        "name": "Return Status",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.4,
+        "position": [
+          528,
+          112
+        ]
+      }
+    ],
+    "connections": {
+      "Status Webhook": {
+        "main": [
+          [
+            {
+              "node": "Validate Status Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate Status Request": {
+        "main": [
+          [
+            {
+              "node": "Status Request Valid?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Status Request Valid?": {
+        "main": [
+          [
+            {
+              "node": "Read Processing Status",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Build Safe Status Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read Processing Status": {
+        "main": [
+          [
+            {
+              "node": "Build Safe Status Response",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Build Safe Status Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Safe Status Response": {
+        "main": [
+          [
+            {
+              "node": "Return Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate"
+    },
+    "staticData": null,
+    "meta": null,
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "a876cc62-f54e-432a-a779-a36be3d1dcbf",
+    "activeVersionId": null,
+    "versionCounter": 2,
+    "triggerCount": 0,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-10-23T16:04:43.017Z",
+        "createdAt": "2026-10-23T16:04:43.017Z",
+        "role": "workflow:owner",
+        "workflowId": "THulrTbNEZ2FrgJ3",
+        "projectId": "vYr2jZ3LWNU28fyd",
+        "project": {
+          "updatedAt": "2025-12-21T21:11:11.756Z",
+          "createdAt": "2025-12-21T21:05:26.373Z",
+          "id": "vYr2jZ3LWNU28fyd",
+          "name": "Sergii Tyrov <stechinua@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "0464a0ed-36d7-44af-b93f-460bb0fd16c2"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  }
+]
