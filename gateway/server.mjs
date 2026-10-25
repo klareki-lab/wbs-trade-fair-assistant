@@ -52,11 +52,21 @@ export function loadConfig(env = process.env) {
     return value.href;
   };
   const secureCookies = originUrl.protocol === 'https:';
+  // WBS Dashboard V1 — optional, read-only, same-origin. Fail-closed if either half is missing.
+  const dashboardRaw = env.N8N_DASHBOARD_URL || '';
+  const dashboardHeaderKey = env.N8N_DASHBOARD_HEADER_KEY || '';
+  if (dashboardRaw && !dashboardHeaderKey) throw new Error('Set N8N_DASHBOARD_HEADER_KEY when N8N_DASHBOARD_URL is set.');
+  if (!dashboardRaw && dashboardHeaderKey) throw new Error('Set N8N_DASHBOARD_URL when N8N_DASHBOARD_HEADER_KEY is set.');
+  const dashboardEnabled = Boolean(dashboardRaw && dashboardHeaderKey);
+  const dashboardUrl = dashboardEnabled ? readUrl('N8N_DASHBOARD_URL') : '';
   return {
     host: env.HOST || '127.0.0.1', port, origin: originUrl.origin,
     accessKey, sessionSecret, headerKey,
     captureUrl: readUrl('N8N_CAPTURE_URL'), statusUrl: readUrl('N8N_STATUS_URL'),
     publicEnabled: env.PUBLIC_FORM_ENABLED === 'true', secureCookies,
+    dashboardEnabled, dashboardUrl, dashboardHeaderKey,
+    dashboardDefaultLimit: 25, dashboardMaxLimit: 50, dashboardMaxPage: 10000,
+    dashboardMaxResponseBytes: 131072,
     upstreamTimeoutMs: 20000,
     limits: {
       login: { count: 8, windowMs: 15 * 60 * 1000 },
@@ -196,9 +206,38 @@ function safeStatus(body, leadId) {
   };
 }
 
-async function readUpstreamJson(response) {
+// WBS Dashboard V1 — strict allowlist. Any extra upstream field is dropped. Any missing/invalid field drops the row.
+const DUP_SET = ['NEW', 'POSSIBLE_DUPLICATE', 'EXISTING_CONTACT'];
+const BAND_SET = ['HOT', 'WARM', 'COLD'];
+function safeDashboardLead(lead) {
+  const nullable = (v, max) => v === null || v === undefined || v === '' ? null : typeof v === 'string' && v.length <= max ? v : undefined;
+  if (!lead || typeof lead !== 'object' || Array.isArray(lead)) return null;
+  const date = typeof lead.created_at === 'string' && lead.created_at.length <= 40 && Number.isFinite(Date.parse(lead.created_at)) ? lead.created_at : null;
+  const company = nullable(lead.company_name, 200);
+  const contact = nullable(lead.contact_name, 200);
+  const band = lead.score_band === null || lead.score_band === undefined ? null : BAND_SET.includes(lead.score_band) ? lead.score_band : null;
+  if (!LEAD_ID.test(String(lead.lead_id || '')) || !date || company === undefined || contact === undefined ||
+      !PROCESSING_STATES.has(lead.processing_status) || !DUP_SET.includes(lead.duplicate_status) ||
+      typeof lead.review_required !== 'boolean') return null;
+  return {
+    lead_id: lead.lead_id, created_at: date,
+    company_name: company || '', contact_name: contact || '',
+    processing_status: lead.processing_status, score_band: band,
+    duplicate_status: lead.duplicate_status, review_required: lead.review_required,
+  };
+}
+function safeDashboardPayload(body, params) {
+  if (!body || typeof body !== 'object' || body.success !== true ||
+      !Number.isInteger(body.total) || body.total < 0 || body.total > 1000000 ||
+      !Array.isArray(body.leads) || body.leads.length > params.limit) return null;
+  const safe = [];
+  for (const row of body.leads) { const r = safeDashboardLead(row); if (r) safe.push(r); }
+  return { success: true, read_only: true, page: params.page, limit: params.limit, total: body.total, leads: safe, as_of: new Date().toISOString() };
+}
+
+async function readUpstreamJson(response, limit = 65536) {
   if (!/^application\/json(?:\s*;|\s*$)/i.test(response.headers.get('content-type') || '')) throw new Error('unexpected response');
-  if (Number(response.headers.get('content-length')) > 65536) throw new Error('oversized response');
+  if (Number(response.headers.get('content-length')) > limit) throw new Error('oversized response');
   const reader = response.body?.getReader();
   if (!reader) throw new Error('empty response');
   const chunks = [];
@@ -207,7 +246,7 @@ async function readUpstreamJson(response) {
     const { value, done } = await reader.read();
     if (done) break;
     size += value.byteLength;
-    if (size > 65536) { await reader.cancel(); throw new Error('oversized response'); }
+    if (size > limit) { await reader.cancel(); throw new Error('oversized response'); }
     chunks.push(Buffer.from(value));
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
@@ -258,6 +297,35 @@ export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date
     });
     return { response, body: await readUpstreamJson(response) };
   };
+  const callDashboardUpstream = async (payload) => {
+    const response = await fetchImpl(config.dashboardUrl, {
+      method: 'POST', redirect: 'error',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Trade-Fair-Key': config.dashboardHeaderKey },
+      body: JSON.stringify(payload), signal: AbortSignal.timeout(config.upstreamTimeoutMs),
+    });
+    return { response, body: await readUpstreamJson(response, config.dashboardMaxResponseBytes) };
+  };
+  const parseDashboardQuery = (params) => {
+    const pageRaw = params.get('page') ?? '1';
+    const limitRaw = params.get('limit') ?? String(config.dashboardDefaultLimit);
+    if (!/^[1-9][0-9]{0,4}$/.test(pageRaw) || !/^[1-9][0-9]{0,2}$/.test(limitRaw)) return null;
+    const page = Number(pageRaw);
+    const limit = Number(limitRaw);
+    if (page < 1 || page > config.dashboardMaxPage || limit < 1 || limit > config.dashboardMaxLimit) return null;
+    if ([...params.keys()].some((k) => !['page', 'limit'].includes(k))) return null;
+    return { page, limit, offset: (page - 1) * limit };
+  };
+  const handleDashboardLeads = async (req, res, url) => {
+    if (!requireSession(req, res) || !applyRate(req, res, 'status')) return;
+    const params = parseDashboardQuery(url.searchParams);
+    if (!params) { failure(res, 400, 'INVALID_JSON'); return; }
+    try {
+      const { response, body } = await callDashboardUpstream({ page: params.page, limit: params.limit, offset: params.offset });
+      const safe = response.status === 200 ? safeDashboardPayload(body, params) : null;
+      if (safe) { sendJson(res, 200, safe); return; }
+      failure(res, 503, 'STATUS_UNAVAILABLE', { retryable: true, persistence: 'unknown' });
+    } catch { failure(res, 503, 'STATUS_UNAVAILABLE', { retryable: true, persistence: 'unknown' }); }
+  };
   const handleCapture = async (req, res, isPublic) => {
     if (!requireOrigin(req, res)) return;
     if (!isPublic && !requireSession(req, res)) return;
@@ -307,7 +375,7 @@ export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date
         sendJson(res, 200, { success: true, service: 'trade-fair-gateway' }); return;
       }
       if (req.method === 'GET' && route === '/api/session') {
-        sendJson(res, 200, { success: true, authenticated: validSession(req, config, now), public_form_enabled: config.publicEnabled }); return;
+        sendJson(res, 200, { success: true, authenticated: validSession(req, config, now), public_form_enabled: config.publicEnabled, dashboard_enabled: config.dashboardEnabled }); return;
       }
       if (req.method === 'POST' && route === '/api/login') {
         if (!requireOrigin(req, res) || !applyRate(req, res, 'login')) return;
@@ -344,6 +412,26 @@ export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date
         } catch { failure(res, 503, 'STATUS_UNAVAILABLE', { retryable: true, persistence: 'unknown' }); }
         return;
       }
+      // WBS Dashboard V1 — session-protected, same-origin, no-store.
+      if (config.dashboardEnabled && route === '/api/dashboard/leads') {
+        if (req.method !== 'GET') { req.resume(); failure(res, 405, 'REQUEST_REJECTED'); return; }
+        await handleDashboardLeads(req, res, url); return;
+      }
+      if (config.dashboardEnabled && ['/dashboard', '/dashboard.css', '/dashboard.js'].includes(route)) {
+        if (!['GET', 'HEAD'].includes(req.method)) { req.resume(); failure(res, 405, 'REQUEST_REJECTED'); return; }
+        if (!validSession(req, config, now)) {
+          req.resume();
+          if (route === '/dashboard') { res.writeHead(302, { Location: '/' }); res.end(); return; }
+          failure(res, 401, 'AUTH_REQUIRED'); return;
+        }
+        const filename = route === '/dashboard' ? 'dashboard.html'
+          : route === '/dashboard.css' ? 'dashboard.css' : 'dashboard.js';
+        const type = route === '/dashboard' ? 'text/html; charset=utf-8'
+          : route === '/dashboard.css' ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8';
+        const content = await readFile(path.join(WEB_ROOT, filename));
+        res.writeHead(200, { 'Content-Type': type, 'Content-Length': content.length });
+        res.end(req.method === 'HEAD' ? undefined : content); return;
+      }
       const staticRoutes = new Map([
         ['/', ['index.html', 'text/html; charset=utf-8']],
         ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
@@ -362,6 +450,7 @@ export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date
       if (['/api/login', '/api/logout', '/api/leads', '/api/public/leads'].includes(route)) {
         failure(res, route === '/api/public/leads' && !config.publicEnabled ? 404 : 405, 'REQUEST_REJECTED'); return;
       }
+      if (config.dashboardEnabled && route === '/api/dashboard/leads') { failure(res, 405, 'REQUEST_REJECTED'); return; }
       failure(res, 404, 'NOT_FOUND');
     } catch (error) {
       if (error instanceof RequestError) { failure(res, error.status, error.code); return; }
