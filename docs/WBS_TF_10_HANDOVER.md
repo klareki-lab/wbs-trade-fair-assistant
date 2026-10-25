@@ -28,15 +28,19 @@ Mobile form   →  nginx :443 (Let's Encrypt)  →  wbs-trade-fair-gateway  → 
                                                                                                 mailbox only
 ```
 
-- **Runtime SHA on production:** `main` = `91a126e1567dee0ec83375c1667e9492f1675a87`, tree
-  `4b1c8014a1755c0fbde84f3b71cf954443b2b3ea`.
+- **Runtime SHA on production:** `main` = `b07984b3a9aa7b65fc29b31cd4c4942b43d8d728`, tree
+  `4279f1f5b40c8320726a63dcde4793331c88e0d2` (PR #14 — Dashboard login
+  — merged into TF-08 release at `91a126e / 4b1c8014…`).
 - **Immutable image:** built from this SHA on the VPS using
   `Dockerfile.dashboard-staging`; image id
-  `sha256:9a656ebbf92f8a7bd544e00a35e24ce9494a83f7ef2f738b09b7d142c58aca58`,
-  no host mounts, baked `/app/gateway` and `/app/web`.
+  `sha256:0f517bedff4b9de1b38d394aa80fbc4f27dc0e0963c79056571e54bcd60da516`,
+  no host mounts, baked `/app/gateway` and `/app/web` (now including
+  `dashboard-login.html` and `dashboard-login.js`).
 - **Previous image for L1 rollback:** container
-  `wbs-trade-fair-gateway.saved-20261024T223914Z` (Exited), image
-  `sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914`.
+  `wbs-trade-fair-gateway.saved-20261025T075219Z` (Exited), image
+  `sha256:9a656ebbf92f8a7bd544e00a35e24ce9494a83f7ef2f738b09b7d142c58aca58`
+  (TF-08 build). An earlier `wbs-trade-fair-gateway.saved-20261024T223914Z`
+  with image `sha256:fe4f6d74…` is retained as the pre-dashboard baseline.
 
 ## 2. Deployment locations and component responsibilities
 
@@ -89,7 +93,7 @@ PostgreSQL role `trade_fair_app` (n8n worker, pre-existing, unchanged):
 | --- | --- | --- | --- | --- |
 | **WF-A** Lead Capture | `d5uO1lnwjOirJ5Xf` | **active=true** | Webhook `POST /webhook/trade-fair/lead` with `httpHeaderAuth` cred `tjqSy2V0odocljw6` (Gateway Auth) | — (DB only; `trade_fair.capture_lead`) |
 | **WF-B** Lead Processing | `dr05aJRh8Lu6VpSA` | **active=true** | Schedule every 1 minute + manual trigger | Tavily (`A4Xm6WZ9d6SsMkfs`), OpenAI (`UUprjEp0Re6kPUFN`) |
-| **WF-C** Email Delivery | `bRkCsVxZXU85yqLI` | **inactive after single TF-09 send** (Owner decision pending) | Schedule every 1 minute + manual trigger | Resend (`HvE5Js2qo8BxvrSs`) |
+| **WF-C** Email Delivery | `bRkCsVxZXU85yqLI` | **active=true** (permanent, Owner-approved 2026-10-25 under WBS-TF-11 after one TF-09 send) | Schedule every 1 minute + manual trigger | Resend (`HvE5Js2qo8BxvrSs`) |
 | **WF-D** Lead Status | `THulrTbNEZ2FrgJ3` | **active=true** | Webhook `POST /webhook/trade-fair/status` with same Gateway Auth cred | — (DB only; `trade_fair.get_lead_status`) |
 
 ### 4.1 WF-C email policy (independently audited from n8n SQLite workflow definitions on 2026-10-25)
@@ -122,6 +126,17 @@ Deltas: `total_leads 22 → 23`, `today 0 → 1`, `processing=completed 12 → 1
 ## 6. Dashboard capability inventory
 
 Served at `https://messe.klare-ki.de/dashboard` from Gateway (`Messe-Admin-Hub.html` + `dashboard.js` + `dashboard.css`). Requires `DASHBOARD_ACCESS_KEY` login via same-origin.
+
+### 6.0 Browser login flow (added in WBS-TF-11)
+
+A first-time visitor to `https://messe.klare-ki.de/dashboard` now sees a small German login screen (`web/dashboard-login.html` + public `web/dashboard-login.js`):
+
+1. Enter the Admin-Zugangsschlüssel (`DASHBOARD_ACCESS_KEY`, not the form key) and submit.
+2. The page posts same-origin JSON to `/api/login`; on success the Gateway sets a dashboard-scope `trade_fair_session` cookie (HttpOnly, Secure, SameSite=Strict) and the client reloads `/dashboard`.
+3. The authenticated `/dashboard` serves `Messe-Admin-Hub.html` with the full admin UI.
+4. "Abmelden" (logout) via the Admin UI POSTs `/api/logout` with Origin header; subsequent `/dashboard` requests return the login page again.
+
+API clients (that do not send `Accept: text/html`) continue to receive the strict 401 JSON `AUTH_REQUIRED` contract. `/dashboard.js` and `/dashboard.css` remain session-protected. A form-user session cannot read `/api/dashboard` nor the Dashboard HTML/JS/CSS. CSP remains `script-src 'self'` — the login script is served from the Gateway's own origin via `/dashboard-login.js`.
 
 ### Columns (lead list)
 Erfasst (created_at) · Firma / Kontakt (company_name / contact_name) · Score (band + total) · Verarbeitung (processing_status) · E-Mail (email_status + verified flag) · Duplikat (duplicate_status) · Details button.
@@ -245,18 +260,31 @@ Via automation controller: `POST /rest/workflows/<id>` with `active=false`; same
 
 - [ ] Open `https://messe.klare-ki.de/` on mobile; confirm HTTPS lock and form renders.
 - [ ] Fill in a test lead through the mobile form (do not submit yet).
-- [ ] Open a second tab to `https://messe.klare-ki.de/dashboard`; log in with `DASHBOARD_ACCESS_KEY`.
+- [ ] Open a second tab to `https://messe.klare-ki.de/dashboard`; the login screen loads directly (German "Admin-Zugangsschlüssel"). Enter the Dashboard key; the Admin UI appears.
 - [ ] Submit the form; show the 201 response in the mobile browser.
 - [ ] In the Dashboard, hit refresh; show the lead appearing with `processing=pending`.
-- [ ] After ~60 s refresh again; show transitions to `processing=completed`, score band populated, `email_status=pending`.
+- [ ] After ~60 s refresh again; show transitions to `processing=completed`, score band populated, `email_status=pending → delivered` (WF-C now active — demo lead triggers an actual email to `sergii.automation.jobs@gmail.com`).
 - [ ] Open the lead's Details drawer; show company research and AI extraction.
-- [ ] (Optional) Owner activates WF-C in n8n and shows one scheduled tick → `email_status=delivered`. Then deactivates WF-C again.
-- [ ] Show the stats panel KPIs and filters.
-- [ ] Explain the rollback path: `.saved-20261024T223914Z` container, HTTPS holding vhost, PR #9 rollback SQL.
+- [ ] Show the stats panel KPIs and filters (band / processing / email / duplicate; sort options).
+- [ ] Open Gmail (`sergii.automation.jobs@gmail.com`) and show the `[Train Today] HOT | FAIR-…` email body with scoring breakdown.
+- [ ] Explain the rollback path: `.saved-20261025T075219Z` container (TF-08 image preserved), HTTPS holding vhost at `ops/nginx/messe.klare-ki.de.https-holding.conf`, PR #9 rollback SQL (`sql/production/dashboard_role_production_rollback.sql`).
 
 ## 10. Project status
 
-- **System state:** HTTPS live, Dashboard live, PR #9 atomic migration committed, 23 leads in Neon (22 historical + 1 TF-09 acceptance), one TF-09 email delivered.
-- **Workflow activation:** WF-A active, WF-B active, WF-C inactive (pending Owner GO), WF-D active.
-- **Independent audit chain:** PR #10 reviewed the atomic SQL; PR #12 corrected the TF-08 packet; PR #11 was superseded; `main` at `91a126e` is the production tree.
+- **System state:** HTTPS live, Dashboard live with browser login UI, PR #9 atomic migration committed, 23 leads in Neon (22 historical + 1 TF-09 acceptance), one TF-09 email delivered.
+- **Workflow activation (final):** WF-A active, WF-B active, **WF-C active (permanent, Owner-approved 2026-10-25)**, WF-D active. Each WF-A..D version pinned: WF-A `0c87ae2a-…`, WF-B `c68f7272-…`, WF-C `b2c08c88-…`, WF-D `a876cc62-…`. WF-C recipient hardcoded in `WF-B / Processing Configuration`: `sales_report_recipient = sergii.automation.jobs@gmail.com`, `sales_report_sender = reports@klare-ki.de`.
+- **Independent audit chain:** PR #10 reviewed the atomic SQL; PR #12 corrected the TF-08 packet; PR #11 was superseded; PR #13 is this handover; PR #14 is the Dashboard-login fix (WBS-TF-11). `main` at `b07984b` is the production tree.
 - **Credentials:** no production password or URL with password appears anywhere in this doc, in git, or in open logs. Operator credentials for migration-level actions remain Owner-held and are injected only during authorized windows (TF-08 pattern).
+
+## 11. WBS-TF-11 — Dashboard login + WF-C activation record
+
+- **Dashboard-login PR:** #14, merged to `main` at `b07984b`. Tree `4279f1f5…`. 6 new regression tests added on top of the 40 TF-08 tests (46/46 PASS; nginx 3/3 PASS). No change to `/api/dashboard`, `/dashboard.js`, `/dashboard.css`, session cookie, CSP, Neon privileges, or workflow definitions.
+- **Deployment:** VPS reversible container swap on 2026-10-25 under `TF_ROLLOUT_TS=20261025T075219Z`. Backup under `/opt/wbs-trade-fair/secrets/backups/20261025T075219Z/` (`env.pre`, `inspect.json`, `image.json`, `nginx-pre.conf`, all 0600 root). New image `sha256:0f517bed…`; saved container `wbs-trade-fair-gateway.saved-20261025T075219Z` holds the previous TF-08 image `sha256:9a656ebb…`.
+- **Live acceptance:** `GET /dashboard` with `Accept: text/html` → 200 HTML login (German label + external script); `Accept: application/json` → 401 JSON `AUTH_REQUIRED`; `/dashboard-login.js` → 200 public; `/dashboard.js` and `/dashboard.css` → 401 anon; form-user cookie → login page (no admin UI); Dashboard-key cookie → Admin UI + `/api/dashboard` 200; logout → login page. Public DNS GET `/dashboard` → 200. nginx 3/3.
+- **WF-C permanent activation:** `n8n_activate(bRkCsVxZXU85yqLI, true)` at 2026-10-25T07:53:41Z. Version activated: `b2c08c88-10af-4bdd-b28c-76b0c750b171` (unchanged from TF-09). Two idle scheduler ticks observed: execution `13788559` (07:53:55Z, 62 ms, empty-queue no-op) and `13788561` (07:54:55Z, 64 ms, empty-queue no-op). Outbox state unchanged post-activation: `pending=0, leased=0, sending=0, uncertain=0, delivered=13, failed=0`. No email sent during activation.
+- **Resend sender-domain verification (independent public-DNS check, 2026-10-25):**
+  - **DKIM** — `resend._domainkey.klare-ki.de` TXT returns a non-empty public key → **PASS** (Resend DKIM published).
+  - **SPF** — `klare-ki.de` TXT = `v=spf1 a mx mx:sendinblue.com ~all` → **LIMITATION:** SPF currently covers Brevo/Sendinblue, not Resend. Mail from Resend passes DKIM alignment but SPF alignment is not Resend-covered. The TF-09 test email was Owner-confirmed as received in Gmail (empirical deliverability), but spam-folder landing on strict MTAs is possible until SPF includes a Resend `include:` entry.
+  - **DMARC** — `_dmarc.klare-ki.de` TXT = `v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com` → monitor-only policy, no enforcement.
+  - Owner follow-up (not blocking): optionally add `include:_spf.resend.com` (or whatever Resend documents) to the SPF record and migrate the DMARC `rua` away from Brevo if Brevo is no longer in use.
+- **Immediate disable procedure** (preserved): `n8n_activate(bRkCsVxZXU85yqLI, false)` via the automation controller, or toggle `Active=false` in `https://n5n.klare-ki.de`. In-flight leases (180 s) expire back to `pending`.
