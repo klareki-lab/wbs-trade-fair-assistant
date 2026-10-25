@@ -71,3 +71,100 @@ test('dashboard config fails closed',()=>{
  assert.throws(()=>loadConfig({...ENV,DASHBOARD_ACCESS_KEY:ENV.TRADE_FAIR_ACCESS_KEY}),/DASHBOARD_ACCESS_KEY/);
  assert.throws(()=>loadConfig({...ENV,DASHBOARD_ENABLED:'yes'}),/DASHBOARD_ENABLED/);
 });
+
+test('anonymous browser GET /dashboard returns German login page, API clients still 401',async()=>{
+ const {address,close}=await start();try{
+  const browser=await fetch(address+'/dashboard',{headers:{Accept:'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'}});
+  assert.equal(browser.status,200);
+  assert.match(browser.headers.get('content-type')||'',/text\/html/);
+  const csp=browser.headers.get('content-security-policy')||'';
+  assert.match(csp,/script-src 'self'/);
+  assert(!csp.includes("'unsafe-inline'"),'login page must not weaken CSP');
+  const html=await browser.text();
+  assert.match(html,/Admin-Zugangsschlüssel/);
+  assert.match(html,/<form id="dashboard-login-form"/);
+  assert.match(html,/<script src="\/dashboard-login\.js"/);
+  assert(!html.includes(ENV.DASHBOARD_ACCESS_KEY),'login page must not leak the key');
+  assert(!html.includes(ENV.TRADE_FAIR_ACCESS_KEY),'login page must not leak the form key');
+  const api=await fetch(address+'/dashboard',{headers:{Accept:'application/json'}});
+  assert.equal(api.status,401);
+  assert.match(api.headers.get('content-type')||'',/application\/json/);
+  const body=await api.json();assert.equal(body.error.code,'AUTH_REQUIRED');
+  const defaultAccept=await fetch(address+'/dashboard');assert.equal(defaultAccept.status,401);
+ }finally{await close()}
+});
+
+test('/dashboard-login.js served publicly without leaking keys; dashboard assets stay protected',async()=>{
+ const {address,close}=await start();try{
+  const js=await fetch(address+'/dashboard-login.js');
+  assert.equal(js.status,200);
+  assert.match(js.headers.get('content-type')||'',/text\/javascript/);
+  const code=await js.text();
+  assert.match(code,/\/api\/login/);
+  assert(!code.includes(ENV.DASHBOARD_ACCESS_KEY));
+  assert(!code.includes(ENV.TRADE_FAIR_ACCESS_KEY));
+  assert(!code.includes(ENV.SESSION_SECRET));
+  for(const [url,accept] of [['/dashboard.js','*/*'],['/dashboard.css','*/*'],['/dashboard.js','text/html'],['/dashboard.css','text/html']]){
+   const r=await fetch(address+url,{headers:{Accept:accept}});
+   assert.equal(r.status,401,`${url} with Accept=${accept}`);
+  }
+  const post=await fetch(address+'/dashboard-login.js',{method:'POST',headers:{Origin:'http://app.test','Content-Type':'application/json'},body:'{}'});
+  assert.equal(post.status,405);
+ }finally{await close()}
+});
+
+test('form-user browser sees login page on /dashboard, cannot read Dashboard data',async()=>{
+ const {address,close}=await start();try{
+  const cookie=await signIn(address,ENV.TRADE_FAIR_ACCESS_KEY);
+  const browser=await fetch(address+'/dashboard',{headers:{Cookie:cookie,Accept:'text/html,application/xhtml+xml'}});
+  assert.equal(browser.status,200);
+  const html=await browser.text();
+  assert.match(html,/dashboard-login-form/);
+  assert.doesNotMatch(html,/Messe Hub · Admin · Train Today/);
+  for(const url of ['/api/dashboard','/dashboard.js','/dashboard.css']){
+   const r=await fetch(address+url,{headers:{Cookie:cookie}});assert.equal(r.status,401,url);
+  }
+ }finally{await close()}
+});
+
+test('dashboard-key login grants Admin UI; logout returns to login page',async()=>{
+ const {address,close}=await start();try{
+  const login=await fetch(address+'/api/login',{method:'POST',headers:{Origin:'http://app.test','Content-Type':'application/json'},body:JSON.stringify({access_key:ENV.DASHBOARD_ACCESS_KEY})});
+  assert.equal(login.status,200);
+  const setCookie=login.headers.get('set-cookie');
+  assert.match(setCookie,/HttpOnly/);assert.match(setCookie,/SameSite=Strict/);
+  const cookie=setCookie.split(';')[0];
+  const session=await (await fetch(address+'/api/session',{headers:{Cookie:cookie}})).json();
+  assert.equal(session.authenticated,true);assert.equal(session.dashboard_authenticated,true);
+  const ui=await fetch(address+'/dashboard',{headers:{Cookie:cookie,Accept:'text/html'}});
+  assert.equal(ui.status,200);
+  const html=await ui.text();
+  assert.match(html,/Messe Hub · Admin · Train Today/);
+  assert.doesNotMatch(html,/dashboard-login-form/);
+  const logout=await fetch(address+'/api/logout',{method:'POST',headers:{Cookie:cookie,Origin:'http://app.test'}});
+  assert.equal(logout.status,200);
+  assert.match(logout.headers.get('set-cookie')||'',/Max-Age=0/);
+  const afterLogout=await fetch(address+'/dashboard',{headers:{Accept:'text/html'}});
+  assert.equal(afterLogout.status,200);
+  assert.match(await afterLogout.text(),/dashboard-login-form/);
+ }finally{await close()}
+});
+
+test('wrong access key is rejected at /api/login with no cookie, login screen remains',async()=>{
+ const {address,close}=await start();try{
+  const r=await fetch(address+'/api/login',{method:'POST',headers:{Origin:'http://app.test','Content-Type':'application/json'},body:JSON.stringify({access_key:'not-the-right-key-whatsoever'})});
+  assert.equal(r.status,401);
+  assert.equal(r.headers.get('set-cookie'),null);
+  const body=await r.json();assert.equal(body.error.code,'INVALID_ACCESS_KEY');
+  const after=await fetch(address+'/dashboard',{headers:{Accept:'text/html'}});
+  assert.equal(after.status,200);
+ }finally{await close()}
+});
+
+test('cross-origin login attempt rejected without cookie (CSRF)',async()=>{
+ const {address,close}=await start();try{
+  const r=await fetch(address+'/api/login',{method:'POST',headers:{Origin:'http://evil.example','Content-Type':'application/json'},body:JSON.stringify({access_key:ENV.DASHBOARD_ACCESS_KEY})});
+  assert.notEqual(r.status,200);
+  assert.equal(r.headers.get('set-cookie'),null);
+ }finally{await close()}
+});
