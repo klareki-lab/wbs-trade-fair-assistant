@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="de"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#133e43">
+<meta name="description" content="Admin-Anmeldung für den Train Today Messe Hub.">
+<title>Admin-Anmeldung · Messe Hub · Train Today</title>
+<link rel="stylesheet" href="/styles.css">
+</head><body>
+<main class="auth-shell">
+  <section class="card login-card" aria-labelledby="login-title">
+    <h1 id="login-title">Messe Hub · Admin</h1>
+    <p class="muted">Anmeldung mit dem Admin-Zugangsschlüssel. Der normale Formular-Schlüssel genügt hier nicht.</p>
+    <form id="dashboard-login-form" novalidate>
+      <label for="access-key">Admin-Zugangsschlüssel</label>
+      <input id="access-key" name="access_key" type="password" autocomplete="current-password"
+             autocapitalize="none" autocorrect="off" spellcheck="false" required
+             minlength="16" maxlength="256" aria-describedby="login-error">
+      <p id="login-error" class="field-error" role="alert" hidden></p>
+      <button type="submit" class="primary">Anmelden</button>
+    </form>
+    <p class="auth-footer"><a href="/">Zurück zum Formular</a></p>
+  </section>
+</main>
+<script src="/dashboard-login.js"></script>
+</body></html>
