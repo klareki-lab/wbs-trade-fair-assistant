@@ -28,8 +28,8 @@
     </div>
     <div class="nav-label">Übersicht</div>
     <button class="nav on" type="button" data-go="top"><svg class="i"><use href="#i-dash"/></svg><span class="lbl">Dashboard</span></button>
-    <button class="nav" type="button" data-go="tabelle" data-tab="alle"><svg class="i"><use href="#i-db"/></svg><span class="lbl">Lead-Datenbank</span></button>
-    <button class="nav" type="button" data-go="tabelle" data-tab="duplikate"><svg class="i"><use href="#i-copy"/></svg><span class="lbl">Duplikate</span><span class="badge" id="navDup"></span></button>
+    <button class="nav" type="button" data-go="tabelle" data-tab="all"><svg class="i"><use href="#i-db"/></svg><span class="lbl">Lead-Datenbank</span></button>
+    <button class="nav" type="button" data-go="tabelle" data-tab="dups"><svg class="i"><use href="#i-copy"/></svg><span class="lbl">Duplikate</span><span class="badge" id="navDup"></span></button>
     <div class="nav-label">Navigation</div>
     <a class="nav" href="/"><svg class="i"><use href="#i-note"/></svg><span class="lbl">Zum Formular</span></a>
     
@@ -79,6 +79,7 @@
         <div class="tools">
           <div class="seg" id="tabs"></div><select id="filterBand" aria-label="Scoring"><option value="">Alle Scores</option><option>HOT</option><option>WARM</option><option>COLD</option><option value="UNSCORED">Unbewertet</option></select><select id="filterProcessing" aria-label="Verarbeitung"><option value="">Alle Status</option><option>pending</option><option>processing</option><option>completed</option><option>failed</option></select><select id="filterEmail" aria-label="E-Mail"><option value="">Alle E-Mails</option><option>pending</option><option>leased</option><option>sending</option><option>delivered</option><option>uncertain</option><option>failed</option><option value="none">Ohne E-Mail</option></select><select id="sort" aria-label="Sortieren"><option value="created:desc">Neueste</option><option value="created:asc">Älteste</option><option value="company:asc">Firma A–Z</option><option value="company:desc">Firma Z–A</option><option value="score:desc">Score absteigend</option><option value="score:asc">Score aufsteigend</option></select>
           <div class="search"><svg class="i"><use href="#i-search"/></svg><input type="search" id="search" placeholder="Suchen …"></div>
+          <button class="btn sm" type="button" id="resetFiltersBtn" title="Alle Filter zurücksetzen">Filter zurücksetzen</button>
           <button class="btn icon" type="button" id="refreshBtn" title="Jetzt aktualisieren"><svg class="i"><use href="#i-refresh"/></svg></button>
         </div>
       </div>

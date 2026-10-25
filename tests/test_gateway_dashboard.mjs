@@ -168,3 +168,48 @@ test('cross-origin login attempt rejected without cookie (CSRF)',async()=>{
   assert.equal(r.headers.get('set-cookie'),null);
  }finally{await close()}
 });
+
+test('TF-12: dashboard HTML wires sidebar tabs and reset-filters button',async()=>{
+ const {address,close}=await start();try{
+  const cookie=await signIn(address);
+  const r=await fetch(address+'/dashboard',{headers:{Cookie:cookie,Accept:'text/html'}});
+  assert.equal(r.status,200);
+  const html=await r.text();
+  // Sidebar tabs use the canonical values the handler recognises.
+  assert.match(html,/data-tab="all"/);
+  assert.match(html,/data-tab="dups"/);
+  assert.doesNotMatch(html,/data-tab="alle"/);
+  assert.doesNotMatch(html,/data-tab="duplikate"/);
+  // Reset-filters affordance exists.
+  assert.match(html,/id="resetFiltersBtn"/);
+  assert.match(html,/Filter zurücksetzen/);
+  // Duplikate sidebar still exists and shows the dynamic badge span.
+  assert.match(html,/id="navDup"/);
+ }finally{await close()}
+});
+
+test('TF-12: dashboard.js wires row click, sidebar tab, reset filters, keyboard access',async()=>{
+ const {address,close}=await start();try{
+  const cookie=await signIn(address);
+  const r=await fetch(address+'/dashboard.js',{headers:{Cookie:cookie}});
+  assert.equal(r.status,200);
+  const code=await r.text();
+  // selectTab + resetFilters helpers exist.
+  assert.match(code,/function selectTab/);
+  assert.match(code,/function resetFilters/);
+  // Sidebar nav buttons with data-tab are wired.
+  assert.match(code,/\.side \.nav\[data-tab\]/);
+  // Reset-filters click handler.
+  assert.match(code,/resetFiltersBtn/);
+  // Row click + keyboard handlers (role=button, Enter/Space on tr[data-id]).
+  assert.match(code,/tr\[data-id\]/);
+  assert.match(code,/role="button"/);
+  assert.match(code,/aria-label="Details/);
+  assert.match(code,/keydown/);
+  // Existing explicit Details button still handled.
+  assert.match(code,/button\[data-id\]/);
+  // Logout flow and 401-redirect fallback preserved.
+  assert.match(code,/\/api\/logout/);
+  assert.match(code,/window\.location\.assign\('\/'\)/);
+ }finally{await close()}
+});
