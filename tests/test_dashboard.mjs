@@ -43,10 +43,10 @@ test('SQL statement remains fixed and user text is bound, never interpolated',as
  const input=parseDashboardQuery(new URLSearchParams('search=Robert%27%29%3BDROP%20TABLE%20x%3B--'));await db.query(input);
  assert(!executed[0].includes('DROP TABLE'));assert.match(executed[1][2],/DROP TABLE/);
 });
-test('SQL migration and browser carry no write endpoint or embedded credentials',async()=>{
+test('Dashboard snapshot stays read-only; browser embeds no credentials or PII storage',async()=>{
  const files=await Promise.all(['web/Messe-Admin-Hub.html','web/dashboard.js','web/dashboard.css'].map(f=>readFile(path.join(root,f),'utf8')));
  const txt=files.join('\n');for(const forbidden of ['n8n.poljanzew.app','Basic Auth','n8nUrl','__PASSWORT__','data-chat','/webhook/','Authorization: Basic'])assert(!txt.includes(forbidden),forbidden);
- assert.match(txt,/api\/dashboard/);assert.match(txt,/\/api\/logout/);assert(!/localStorage|sessionStorage/.test(txt));
+ assert.match(txt,/api\/dashboard/);assert.match(txt,/\/api\/logout/);assert(!/localStorage/.test(txt)); assert.match(txt, /sessionStorage\.setItem\('messe:pending-submission-id', aiSubmissionId\)/); assert.equal((txt.match(/sessionStorage\.setItem/g) || []).length,1,'Only opaque submission ID may be stored');
  const sql=await readFile(path.join(root,'sql/dashboard_snapshot.sql'),'utf8');
  const definition=await readFile(path.join(root,'sql/dashboard_snapshot_definition.sql'),'utf8');
  assert.match(definition,/SECURITY DEFINER/);assert.match(sql,/REVOKE ALL ON FUNCTION/);assert.match(sql,/GRANT EXECUTE ON FUNCTION/);

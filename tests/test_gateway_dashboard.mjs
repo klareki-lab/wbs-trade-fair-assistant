@@ -338,7 +338,7 @@ test('TF-19: AI extract rejects short notes and control characters',async()=>{
 test('TF-19: AI ask grounds answer and only cites valid FAIR ids; invalid upstream data → 503',async()=>{
  const env={...ENV,N8N_AI_EXTRACT_URL:'http://upstream.test/ai-extract',N8N_AI_ASK_URL:'http://upstream.test/ai-ask'};
  // Good upstream
- const good=async()=>jsonResponse(200,{success:true,answer:'Antwort ohne Erfindung.',cited_lead_ids:[LEAD_A,'invalid-id-ignore',LEAD_B],tokens:{total_input:100,total_output:50},private_field:'drop'});
+ const good=async()=>jsonResponse(200,{success:true,answer:'Antwort ohne Erfindung.',cited_lead_ids:[LEAD_A,LEAD_B],tokens:{total_input:100,total_output:50},private_field:'drop'});
  const {address,close}=await start(undefined,{env,fetchImpl:good});try{
   const dash=await signIn(address);
   const r=await fetch(address+'/api/dashboard/ai/ask',{method:'POST',headers:{Cookie:dash,Origin:'http://app.test','Content-Type':'application/json'},body:JSON.stringify({question:'Welche Firmen haben Budget?',context_lead_ids:[LEAD_A,LEAD_B]})});
@@ -352,7 +352,7 @@ test('TF-19: AI ask grounds answer and only cites valid FAIR ids; invalid upstre
  const bad=async()=>jsonResponse(200,{success:true,cited_lead_ids:[LEAD_A]});
  const g=await start(undefined,{env,fetchImpl:bad});try{
   const dash=await signIn(g.address);
-  const r=await fetch(g.address+'/api/dashboard/ai/ask',{method:'POST',headers:{Cookie:dash,Origin:'http://app.test','Content-Type':'application/json'},body:JSON.stringify({question:'test?'})});
+  const r=await fetch(g.address+'/api/dashboard/ai/ask',{method:'POST',headers:{Cookie:dash,Origin:'http://app.test','Content-Type':'application/json'},body:JSON.stringify({question:'test?',context_lead_ids:[LEAD_A]})});
   assert.equal(r.status,503);
  }finally{await g.close()}
 });
@@ -380,7 +380,7 @@ test('TF-19: XSS strings from upstream never execute; served as JSON text only',
  };
  const {address,close}=await start(undefined,{env,fetchImpl:upstream});try{
   const dash=await signIn(address);
-  const r=await fetch(address+'/api/dashboard/ai/ask',{method:'POST',headers:{Cookie:dash,Origin:'http://app.test','Content-Type':'application/json'},body:JSON.stringify({question:'test?'})});
+  const r=await fetch(address+'/api/dashboard/ai/ask',{method:'POST',headers:{Cookie:dash,Origin:'http://app.test','Content-Type':'application/json'},body:JSON.stringify({question:'test?',context_lead_ids:[LEAD_A]})});
   assert.equal(r.status,200);
   const txt=await r.text();
   assert.match(r.headers.get('content-type')||'',/application\/json/);
@@ -468,4 +468,38 @@ test('TF-12: dashboard.js wires row click, sidebar tab, reset filters, keyboard 
   assert.match(code,/\/api\/logout/);
   assert.match(code,/window\.location\.assign\('\/'\)/);
  }finally{await close()}
+});
+
+test('R2: duplicate CRM IDs and unknown keys reject before DB; conflicts are HTTP 409',async()=>{
+ let calls=0;
+ const {address,close}=await start(undefined,{crmStore:{merge:async()=>{calls++;return {success:false,error:{code:'MEMBERSHIP_CONFLICT'}}}}});
+ try{const cookie=await signIn(address);const send=(body)=>fetch(address+'/api/dashboard/groups',{method:'POST',headers:{Cookie:cookie,Origin:ENV.APP_ORIGIN,'Content-Type':'application/json'},body:JSON.stringify(body)});
+ for(const body of [{lead_ids:[LEAD_A,LEAD_A],label:'dup'},{lead_ids:[LEAD_A,LEAD_B],label:'x',unknown:true},{lead_ids:[LEAD_A,LEAD_B],label:'x',note:123}])assert.equal((await send(body)).status,400);
+ assert.equal(calls,0);assert.equal((await send({lead_ids:[LEAD_A,LEAD_B],label:'valid'})).status,409);assert.equal(calls,1);
+ }finally{await close();}
+});
+test('R2: AI citation outside actual requested context fails closed; context must be strict',async()=>{
+ let calls=0;
+ const env={...ENV,N8N_AI_EXTRACT_URL:'http://upstream.test/ai-extract',N8N_AI_ASK_URL:'http://upstream.test/ai-ask'};
+ const {address,close}=await start(undefined,{env,fetchImpl:async()=>{calls++;return jsonResponse(200,{success:true,answer:'Unverified data',cited_lead_ids:[LEAD_B]});}});
+ try{const cookie=await signIn(address);const send=(context_lead_ids)=>fetch(address+'/api/dashboard/ai/ask',{method:'POST',headers:{Cookie:cookie,Origin:ENV.APP_ORIGIN,'Content-Type':'application/json'},body:JSON.stringify({question:'Status?',context_lead_ids})});
+ for(const ctx of [[],[LEAD_A,LEAD_A],[LEAD_A,'bad'],null])assert.equal((await send(ctx)).status,422);
+ assert.equal(calls,0);const response=await send([LEAD_A]);assert.equal(response.status,503);assert(!JSON.stringify(await response.json()).includes('Unverified data'));
+ }finally{await close();}
+});
+test('R2: AI upstream origin and TLS are constrained; CRM app rollback preserves dashboard',async()=>{
+ const ai={...ENV,N8N_AI_EXTRACT_URL:'http://evil.test/extract',N8N_AI_ASK_URL:'http://evil.test/ask'};
+ assert.throws(()=>loadConfig(ai),/trusted/);
+ assert.throws(()=>loadConfig({...ai,APP_ORIGIN:'https://app.test',N8N_AI_EXTRACT_URL:'http://upstream.test/extract',N8N_AI_ASK_URL:'http://upstream.test/ask'}),/HTTPS/);
+ const {address,close}=await start(undefined,{env:{...ENV,MESSE_CRM_ENABLED:'false'}});
+ try{const cookie=await signIn(address);assert.equal((await fetch(address+'/api/dashboard',{headers:{Cookie:cookie}})).status,200);assert.equal((await fetch(address+'/api/dashboard/groups',{headers:{Cookie:cookie}})).status,404);}finally{await close();}
+});
+
+test('R2: AI extraction enforces WF-A field lengths, including 10000 note and 2048 website',async()=>{
+ const env={...ENV,N8N_AI_EXTRACT_URL:'http://upstream.test/ai-extract',N8N_AI_ASK_URL:'http://upstream.test/ai-ask'};let calls=0;
+ const {address,close}=await start(undefined,{env,fetchImpl:async()=>{calls++;return jsonResponse(200,{success:true,extracted:{company_name:'x'.repeat(201),contact_name:'x'.repeat(161),phone:'x'.repeat(41),notes:'x'.repeat(10001),website:'https://example.test/'+ 'a'.repeat(1000)}});}});
+ try{const cookie=await signIn(address);const send=notes=>fetch(address+'/api/dashboard/ai/extract',{method:'POST',headers:{Cookie:cookie,Origin:ENV.APP_ORIGIN,'Content-Type':'application/json'},body:JSON.stringify({notes})});
+ assert.equal((await send('x'.repeat(10001))).status,422);assert.equal(calls,0);
+ const r=await send('Synthetic short note');assert.equal(r.status,200);const b=await r.json();for(const field of ['company_name','contact_name','phone','notes'])assert(!b.extracted[field]);assert.equal(b.extracted.website.length,1021);
+ }finally{await close();}
 });

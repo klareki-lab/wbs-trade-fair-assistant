@@ -17,6 +17,8 @@ let items = [], total = 0, lastRequest = 0, tab = 'all', stats = null;
 let selected = new Set();
 let aiEnabled = false, crmEnabled = false, sessionId = 'session-' + Math.random().toString(36).slice(2, 10);
 let groupsCache = [];
+let groupPage = 1, auditPage = 1;
+let crmBusy = false;
 
 function liveState(msg, errorFlag) { const t = $('liveText'); if (t) setText(t, msg); const p = $('pulse'); if (p) p.classList.toggle('unavailable', !!errorFlag); }
 
@@ -111,8 +113,9 @@ function renderTable() {
 
 function updateActionBar() {
   const bar = $('actionbar');
+  if (!crmEnabled) { bar.hidden = true; return; }
   const n = selected.size;
-  if (n > 0) { bar.hidden = false; setText($('auswahlText'), `${n} ausgewählt`); $('mergeBtn').disabled = n < 2; $('ignoreBtn').disabled = n < 1; }
+  if (n > 0) { bar.hidden = false; setText($('auswahlText'), `${n} ausgewählt (maximal 20)`); $('mergeBtn').disabled = n < 2 || n > 20; $('ignoreBtn').disabled = n < 1 || n > 20; }
   else bar.hidden = true;
 }
 
@@ -166,15 +169,20 @@ const closeDrawer = () => { $('drawer').classList.remove('open'); $('backdrop').
 // ---------- CRM groups ----------
 async function loadGroups() {
   if (!crmEnabled) return;
-  const q = new URLSearchParams(); q.set('page', '1'); q.set('limit', '50');
+  const q = new URLSearchParams(); q.set('page', String(groupPage)); q.set('audit_page', String(auditPage)); q.set('limit', '25');
   if ($('toggleRetired')?.checked) q.set('include_retired', 'true');
   try {
     const { status, body } = await fetchJson('/api/dashboard/groups?' + q.toString());
-    if (status !== 200 || !body.success || !Array.isArray(body.groups)) { renderGroups([]); return; }
+    if (status !== 200 || !body.success || !Array.isArray(body.groups)) throw new Error('CRM_UNAVAILABLE');
     groupsCache = body.groups;
     renderGroups(body.groups);
+    renderAudit(body.audit || []);
+    setText($('crmPageInfo'), `Gruppen: Seite ${groupPage} · ${body.total} · Audit: Seite ${auditPage} · ${body.audit_total}`);
+    $('groupsPrev').disabled = groupPage <= 1; $('groupsNext').disabled = groupPage * 25 >= body.total;
+    $('auditPrev').disabled = auditPage <= 1; $('auditNext').disabled = auditPage * 25 >= body.audit_total;
+    $('crmError').hidden = true;
     setText($('navGroups'), body.groups.filter((g) => g.status !== 'retired').length || '');
-  } catch { renderGroups([]); }
+  } catch { setText($('crmError'), 'CRM nicht erreichbar. Bestehende Anzeige bleibt erhalten; bitte erneut laden.'); $('crmError').hidden = false; }
 }
 function renderGroups(groups) {
   const box = $('groupsBox'); clear(box);
@@ -183,7 +191,7 @@ function renderGroups(groups) {
     const card = elem('div', 'group-card'); const head = elem('div', 'group-head');
     head.appendChild(elem('strong', null, g.label || g.group_id.slice(0, 8)));
     head.appendChild(pill(g.status));
-    head.appendChild(elem('span', 'muted', ' · ' + (g.members?.length || 0) + ' Lead(s) · ' + dateDE(g.created_at) + ' · ' + (g.created_by || '–')));
+    head.appendChild(elem('span', 'muted', ' · ' + (g.members?.filter((m) => !m.removed_at).length || 0) + ' aktuelle Lead(s) · ' + dateDE(g.created_at) + ' · ' + (g.created_by || '–')));
     card.appendChild(head);
     const members = elem('ul', 'group-members');
     for (const m of g.members || []) {
@@ -201,16 +209,45 @@ function renderGroups(groups) {
     const foot = elem('div', 'group-foot');
     if (g.status === 'active') {
       const bSplit = elem('button', 'btn sm', 'Trennen'); bSplit.type = 'button'; bSplit.dataset.action = 'split'; bSplit.dataset.group = g.group_id; foot.appendChild(bSplit);
-    } else {
-      const bRevert = elem('button', 'btn sm', 'Rückgängig (Audit-ID)'); bRevert.type = 'button'; bRevert.dataset.action = 'revert'; foot.appendChild(bRevert);
     }
     card.appendChild(foot);
     box.appendChild(card);
   }
 }
 
+function renderAudit(entries) {
+  const box = $('auditBox'); clear(box);
+  if (!entries.length) { box.appendChild(elem('div', 'empty', 'Noch keine Aktionen.')); return; }
+  for (const a of entries) {
+    const row = elem('div', 'group-card'); row.dataset.audit = a.audit_id;
+    row.appendChild(elem('strong', null, a.action + ' · ' + dateDE(a.at)));
+    row.appendChild(elem('div', 'muted', a.by + ' · ' + a.lead_ids.length + ' betroffene Leads'));
+    const affected = elem('details'); affected.appendChild(elem('summary', null, 'Betroffene Leads'));
+    const list = elem('ul'); for (const id of a.lead_ids) list.appendChild(elem('li', null, id)); affected.appendChild(list); row.appendChild(affected);
+    if (a.note) row.appendChild(elem('p', null, a.note));
+    if (a.can_revert) { const b = elem('button', 'btn sm', 'Rückgängig'); b.type = 'button'; b.dataset.action = 'revert'; b.dataset.audit = a.audit_id; row.appendChild(b); }
+    else row.appendChild(elem('span', 'muted', a.reverted_at ? 'Bereits rückgängig gemacht' : a.action === 'revert' ? 'Protokollierte Rücknahme' : 'Durch spätere Aktion gesperrt'));
+    box.appendChild(row);
+  }
+}
+async function crmPost(path, data) {
+  if (crmBusy) return null;
+  crmBusy = true;
+  try {
+    const result = await postJson(path, data);
+    if (result.status !== 200 || !result.body.success) {
+      const conflict = result.status === 409;
+      setText($('crmError'), conflict ? 'Konflikt: Die Gruppierung wurde bereits geändert. Daten wurden neu geladen; bitte Aktion erneut auswählen.' : 'CRM-Aktion abgelehnt. Bitte Eingaben prüfen.');
+      await loadGroups(); $('crmError').hidden = false;
+      return null;
+    }
+    return result.body;
+  } catch { setText($('crmError'), 'Ergebnis unklar. Gruppen und Audit neu laden, bevor du erneut handelst.'); $('crmError').hidden = false; return null; }
+  finally { crmBusy = false; }
+}
+
 async function postJson(path, body) {
-  const resp = await fetch(path, { method: 'POST', credentials: 'same-origin', cache: 'no-store', redirect: 'error', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(body) });
+  const resp = await fetch(path, { method: 'POST', credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(30000), headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(body) });
   if (resp.status === 401) { window.location.assign('/'); throw new Error('AUTH'); }
   const data = await resp.json().catch(() => ({}));
   return { status: resp.status, body: data };
@@ -229,42 +266,49 @@ async function mergeSelected() {
   if (ids.length < 2) return;
   const label = await askLabel('Zusammenführung ' + new Date().toISOString().slice(0, 10));
   if (!label) return;
-  const { status, body } = await postJson('/api/dashboard/groups', { lead_ids: ids, label });
-  if (status === 200 && body.success) { selected.clear(); await loadGroups(); renderTable(); liveState('CRM-Gruppe erstellt'); }
+  const body = await crmPost('/api/dashboard/groups', { lead_ids: ids, label });
+  if (body) { selected.clear(); await loadGroups(); renderTable(); liveState('CRM-Gruppe erstellt'); }
   else liveState('CRM-Aktion abgelehnt', true);
 }
 async function ignoreSelected() {
   const ids = [...selected].filter((x) => LEAD_ID.test(x));
   if (!ids.length) return;
   const note = window.prompt('Begründung (optional):', '');
-  const { status, body } = await postJson('/api/dashboard/groups/ignore', { lead_ids: ids, label: 'Ignoriert ' + new Date().toISOString().slice(0, 10), note: note || null });
-  if (status === 200 && body.success) { selected.clear(); await loadGroups(); renderTable(); liveState('Als Duplikate ignoriert'); }
+  if (note === null) return;
+  const body = await crmPost('/api/dashboard/groups/ignore', { lead_ids: ids, label: 'Ignoriert ' + new Date().toISOString().slice(0, 10), note: note || null });
+  if (body) { selected.clear(); await loadGroups(); renderTable(); liveState('Als Duplikate ignoriert'); }
   else liveState('CRM-Aktion abgelehnt', true);
 }
-async function doGroupAction(action, groupId, leadId) {
-  if (action === 'split' && UUID.test(groupId)) { const { status } = await postJson('/api/dashboard/groups/split', { group_id: groupId }); if (status === 200) await loadGroups(); return; }
-  if (action === 'extract' && UUID.test(groupId) && LEAD_ID.test(leadId)) { const { status } = await postJson('/api/dashboard/groups/extract', { group_id: groupId, lead_id: leadId }); if (status === 200) await loadGroups(); return; }
-  if (action === 'revert') {
-    const auditId = window.prompt('Audit-ID der rückgängig zu machenden Aktion:');
-    if (!auditId || !UUID.test(auditId)) return;
-    const { status } = await postJson('/api/dashboard/groups/revert', { audit_id: auditId });
-    if (status === 200) await loadGroups();
-  }
+async function doGroupAction(action, groupId, leadId, auditId) {
+  if (action === 'split' && UUID.test(groupId)) { if (await crmPost('/api/dashboard/groups/split', { group_id: groupId })) await loadGroups(); }
+  if (action === 'extract' && UUID.test(groupId) && LEAD_ID.test(leadId)) { if (await crmPost('/api/dashboard/groups/extract', { group_id: groupId, lead_id: leadId })) await loadGroups(); }
+  if (action === 'revert' && UUID.test(auditId)) { if (await crmPost('/api/dashboard/groups/revert', { audit_id: auditId })) await loadGroups(); }
 }
 
 // ---------- AI capture (WF-07) ----------
-const EXTRACT_FIELDS = ['company_name','contact_name','email','phone','website','training_interest','budget_status','follow_up','follow_up_date','notes','summary'];
+const EXTRACT_FIELDS = ['company_name','contact_name','email','phone','website','training_interest','budget_status','follow_up','follow_up_date','notes'];
+const CAPTURE_MAX = { company_name:200, contact_name:160, email:254, phone:40, website:2048, training_interest:64, budget_status:64, follow_up:64, follow_up_date:10, notes:10000 };
+let aiPending = null, aiSubmitting = false;
+// Persist only an opaque id, never notes or contact data. A lost response must not rotate it.
+let aiSubmissionId = null;
+try { aiSubmissionId = sessionStorage.getItem('messe:pending-submission-id'); } catch { /* Other dashboard tools remain available if storage is blocked. */ }
 let aiExtractCurrent = null;
 function openAiExtract() {
+  if (aiPending) { $('aiExtractModal').hidden = false; $('aiExtractBackdrop').hidden = false; $('aiExtractModal').setAttribute('aria-hidden','false'); return; }
   $('aiExtractModal').hidden = false; $('aiExtractBackdrop').hidden = false; $('aiExtractModal').setAttribute('aria-hidden', 'false');
+  $('aiPrivacyConsent').checked = false;
   $('aiExtractInput').value = ''; $('aiExtractPanel').hidden = true; $('aiExtractSubmit').disabled = true; $('aiExtractError').hidden = true; aiExtractCurrent = null;
+  if (aiSubmissionId) { setText($('aiExtractError'), 'Eine frühere Übertragung ist ungeklärt. Derselbe Übertragungsschlüssel wird wiederverwendet; bei Konflikt muss der Eingang geprüft werden.'); $('aiExtractError').hidden = false; }
   if (!aiEnabled) { const err = $('aiExtractError'); setText(err, 'WF-07 (AI-Erfassung) ist nicht konfiguriert. Owner aktiviert N8N_AI_EXTRACT_URL.'); err.hidden = false; $('aiExtractAnalyze').disabled = true; }
   else $('aiExtractAnalyze').disabled = false;
 }
 function closeAiExtract() { $('aiExtractModal').hidden = true; $('aiExtractBackdrop').hidden = true; $('aiExtractModal').setAttribute('aria-hidden', 'true'); }
 async function aiAnalyze() {
+  if (aiPending || aiSubmitting) return;
+  $('aiExtractPanel').hidden = true; $('aiExtractSubmit').disabled = true; aiExtractCurrent = null;
   const err = $('aiExtractError'); err.hidden = true; const btn = $('aiExtractAnalyze'); btn.disabled = true;
   try {
+    if (!$('aiPrivacyConsent').checked) { setText(err, 'Bitte die Übertragung der freigegebenen Notiz an den KI-Anbieter bestätigen.'); err.hidden = false; return; }
     const notes = $('aiExtractInput').value.trim(); if (notes.length < 10) { setText(err, 'Notiz ist zu kurz (mind. 10 Zeichen).'); err.hidden = false; return; }
     const { status, body } = await postJson('/api/dashboard/ai/extract', { notes, session_id: sessionId });
     if (status !== 200 || !body.success) { setText(err, body?.error?.message || 'AI nicht erreichbar.'); err.hidden = false; return; }
@@ -282,8 +326,11 @@ async function aiAnalyze() {
       const inp = (k === 'notes' || k === 'summary') ? document.createElement('textarea') : document.createElement('input');
       if (inp.tagName === 'TEXTAREA') inp.rows = 3;
       inp.id = 'aix_' + k; inp.name = k; inp.value = value || '';
-      inp.setAttribute('maxlength', k === 'notes' ? 20000 : k === 'summary' ? 2000 : 254);
+      inp.setAttribute('maxlength', CAPTURE_MAX[k]);
       row.appendChild(inp);
+      const confirmLabel = elem('label', 'confirm-field'); const confirmed = document.createElement('input'); confirmed.type = 'checkbox'; confirmed.className = 'field-confirm'; confirmed.dataset.field = k;
+      confirmed.checked = !value; confirmLabel.appendChild(confirmed); confirmLabel.appendChild(document.createTextNode('Wert geprüft und bestätigt')); row.appendChild(confirmLabel);
+      inp.addEventListener('input', () => { confirmed.checked = !inp.value.trim(); });
       form.appendChild(row);
     }
     const warnings = $('aiExtractWarnings'); clear(warnings);
@@ -293,15 +340,38 @@ async function aiAnalyze() {
   finally { btn.disabled = aiEnabled ? false : true; }
 }
 async function aiSubmit() {
+  if (aiSubmitting) return;
   const err = $('aiExtractError'); err.hidden = true;
-  const payload = { source: 'messe-form', submission_id: 'ai-' + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)) };
-  const form = $('aiExtractForm');
-  for (const el of form.querySelectorAll('[name]')) if (el.value && String(el.value).trim() !== '') payload[el.name] = String(el.value).trim();
-  if (!payload.company_name) { setText(err, 'Firmenname ist erforderlich.'); err.hidden = false; return; }
-  const { status, body } = await postJson('/api/leads', payload);
-  if (status === 201 && body.success) { closeAiExtract(); liveState('Lead übernommen · ' + body.lead_id); load(); }
-  else { setText(err, body?.error?.message || ('HTTP ' + status)); err.hidden = false; }
+  if (!aiPending) {
+    if (!aiExtractCurrent) return;
+    const form = $('aiExtractForm');
+    if ([...form.querySelectorAll('.field-confirm')].some((c) => !c.checked)) { setText(err, 'Bitte jeden ausgefüllten Wert bestätigen, insbesondere Trainingsinteresse, Budget und Follow-up.'); err.hidden = false; return; }
+    const payload = { source: 'internal_form', submission_id: aiSubmissionId || ('ai-' + crypto.randomUUID()) };
+    for (const el of form.querySelectorAll('[name]')) if (el.value.trim()) payload[el.name] = el.value.trim();
+    if (Object.keys(CAPTURE_MAX).some((k) => payload[k] && payload[k].length > CAPTURE_MAX[k])) { setText(err, 'Ein Feld überschreitet die zulässige Länge. Bitte kürzen.'); err.hidden = false; return; }
+    if (!payload.company_name) { setText(err, 'Firmenname ist erforderlich.'); err.hidden = false; return; }
+    aiSubmissionId = payload.submission_id;
+    try { sessionStorage.setItem('messe:pending-submission-id', aiSubmissionId); } catch { setText(err, 'Der Browser kann den Übertragungsschlüssel nicht sichern. Bitte Sitzungsspeicher erlauben, bevor du sendest.'); err.hidden = false; return; }
+    aiPending = payload;
+  }
+  aiSubmitting = true; $('aiExtractSubmit').disabled = true; $('aiExtractAnalyze').disabled = true;
+  for (const el of $('aiExtractForm').querySelectorAll('input,textarea')) el.disabled = true;
+  try {
+    const { status, body } = await postJson('/api/leads', aiPending);
+    if ([200,201].includes(status) && body.success && body.persisted) {
+      try { sessionStorage.removeItem('messe:pending-submission-id'); } catch {} aiSubmissionId = null; aiPending = null; aiExtractCurrent = null;
+      closeAiExtract(); liveState('Lead übernommen · ' + body.lead_id); load();
+    } else if (status === 422 && body.persistence_status === 'not_stored') {
+      aiPending = null;
+      for (const el of $('aiExtractForm').querySelectorAll('input,textarea')) el.disabled = false;
+      setText(err, 'Nicht gespeichert: ' + (body.error?.details || []).map((d) => d.field + ': ' + d.code).join(', ')); err.hidden = false;
+    } else {
+      setText(err, status === 409 ? 'Übertragungskonflikt. Eingang prüfen lassen; kein neuer Schlüssel und kein weiterer Lead werden erzeugt.' : 'Ergebnis unklar. Erneut senden verwendet exakt dieselben Daten und denselben Schlüssel.'); err.hidden = false;
+    }
+  } catch { setText(err, 'Verbindungsfehler; derselbe Übertragungsschlüssel und dieselben Daten bleiben für den erneuten Versuch erhalten.'); err.hidden = false; }
+  finally { aiSubmitting = false; $('aiExtractSubmit').disabled = !aiExtractCurrent; $('aiExtractAnalyze').disabled = !!aiPending || !aiEnabled; }
 }
+window.addEventListener('beforeunload', (e) => { if (aiPending) { e.preventDefault(); e.returnValue = ''; } });
 
 // ---------- AI assistant (WF-08) ----------
 function openAiAsk() {
@@ -342,6 +412,8 @@ async function detectSession() {
     crmEnabled = !!data.crm_enabled; aiEnabled = !!data.ai_enabled;
     const show = (badgeId, flag) => { const el = $(badgeId); if (!el) return; if (flag) { el.hidden = true; } else { el.hidden = false; setText(el, 'aus'); } };
     show('navAiExtract', aiEnabled); show('navAiAsk', aiEnabled);
+    $('gruppen').hidden = !crmEnabled;
+    const crmNav = document.querySelector('[data-go="gruppen"]'); if (crmNav) crmNav.hidden = !crmEnabled;
     if (crmEnabled) await loadGroups();
   } catch (_) {}
 }
@@ -387,8 +459,10 @@ $('mergeBtn').addEventListener('click', mergeSelected);
 $('ignoreBtn').addEventListener('click', ignoreSelected);
 $('clearSelBtn').addEventListener('click', () => { selected.clear(); for (const el of document.querySelectorAll('.row-sel, #selAll')) el.checked = false; updateActionBar(); });
 $('refreshGroupsBtn')?.addEventListener('click', loadGroups);
-$('toggleRetired')?.addEventListener('change', loadGroups);
-$('groupsBox').addEventListener('click', (e) => { const b = e.target.closest('button[data-action]'); if (!b) return; doGroupAction(b.dataset.action, b.dataset.group, b.dataset.lead); });
+$('auditBox').addEventListener('click', (e) => { const b = e.target.closest('button[data-audit]'); if (b) doGroupAction('revert', null, null, b.dataset.audit); });
+for (const [id, kind, delta] of [['groupsPrev','group',-1],['groupsNext','group',1],['auditPrev','audit',-1],['auditNext','audit',1]]) $(id).addEventListener('click', () => { if (kind === 'group') groupPage = Math.max(1,groupPage+delta); else auditPage = Math.max(1,auditPage+delta); loadGroups(); });
+$('toggleRetired')?.addEventListener('change', () => { groupPage = 1; loadGroups(); });
+$('groupsBox').addEventListener('click', (e) => { const b = e.target.closest('button[data-action]'); if (!b) return; doGroupAction(b.dataset.action, b.dataset.group, b.dataset.lead, b.dataset.audit); });
 $('closeDrawer').addEventListener('click', closeDrawer); $('backdrop').addEventListener('click', closeDrawer);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeDrawer(); closeAiExtract(); closeAiAsk(); } });
 $('logoutBtn').addEventListener('click', async () => { try { await fetch('/api/logout', { method: 'POST', credentials: 'same-origin', redirect: 'error', headers: { Origin: location.origin } }); } finally { location.assign('/'); } });

@@ -105,7 +105,11 @@
           <button class="btn icon" type="button" id="refreshGroupsBtn" title="Gruppen neu laden"><svg class="i"><use href="#i-refresh"/></svg></button>
         </div>
       </div>
+      <p id="crmError" role="alert" hidden></p>
       <div id="groupsBox"><div class="empty">Noch keine CRM-Gruppen angelegt.</div></div>
+      <div class="pagination"><button id="groupsPrev" class="btn sm" type="button">Gruppen zurück</button><button id="groupsNext" class="btn sm" type="button">Weitere Gruppen</button></div>
+      <h3>Aktionsprotokoll</h3><div id="auditBox"></div>
+      <div class="pagination"><button id="auditPrev" class="btn sm" type="button">Audit zurück</button><span id="crmPageInfo"></span><button id="auditNext" class="btn sm" type="button">Weitere Aktionen</button></div>
     </div>
   </main>
 </div>
@@ -128,8 +132,9 @@
     <button class="btn icon" type="button" id="aiExtractClose" title="Schließen"><svg class="i"><use href="#i-x"/></svg></button>
   </div>
   <div class="modal-body">
-    <p class="muted">Füge die Gesprächsnotiz vom Messestand ein. Die KI extrahiert die Felder; vor dem Senden an WF-A bestätigst du jeden Wert.</p>
-    <div class="field"><label for="aiExtractInput">Notiz</label><textarea id="aiExtractInput" rows="7" maxlength="20000" placeholder="Gesprächsnotiz vom Messestand …"></textarea></div>
+    <p class="muted">Die Notiz wird zur Extraktion an den konfigurierten externen KI-Anbieter übertragen. Verwende nur dafür freigegebene Daten. Füge die Gesprächsnotiz vom Messestand ein. Die KI extrahiert die Felder; vor dem Senden an WF-A bestätigst du jeden Wert.</p>
+    <div class="field"><label for="aiExtractInput">Notiz</label><textarea id="aiExtractInput" rows="7" maxlength="10000" placeholder="Gesprächsnotiz vom Messestand …"></textarea></div>
+    <label><input type="checkbox" id="aiPrivacyConsent"> Ich bestätige, dass diese Notiz zur Verarbeitung beim konfigurierten KI-Anbieter freigegeben ist.</label>
     <p class="field-error" id="aiExtractError" role="alert" hidden></p>
     <div class="aiPanel" id="aiExtractPanel" hidden>
       <h3>KI-Vorschlag <span class="muted" id="aiExtractMeta"></span></h3>
@@ -151,7 +156,7 @@
     <button class="btn icon" type="button" id="aiAskClose" title="Schließen"><svg class="i"><use href="#i-x"/></svg></button>
   </div>
   <div class="modal-body">
-    <p class="muted">Fragen zur aktuellen Lead-Liste. Antworten dürfen nur Lead-IDs aus deiner Auswahl zitieren.</p>
+    <p class="muted">Fragen zu Status, Score, Trainingsinteresse, Budget und Follow-up der ersten 20 angezeigten Leads. Deine Frage wird lokal auf erlaubte Themen reduziert. An das Modell gehen nur diese Themen, Lead-IDs und erlaubte Kategorien; keine Namen, E-Mails oder Notizen. Antworten beruhen auf geprüften Feldern.</p>
     <div id="aiAskThread" class="chat-thread"></div>
     <p class="field-error" id="aiAskError" role="alert" hidden></p>
   </div>

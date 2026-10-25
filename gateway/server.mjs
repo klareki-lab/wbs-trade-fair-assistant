@@ -82,14 +82,25 @@ export function loadConfig(env = process.env) {
   if ((aiExtractRaw && !aiAskRaw) || (!aiExtractRaw && aiAskRaw)) {
     throw new Error('Set BOTH N8N_AI_EXTRACT_URL and N8N_AI_ASK_URL, or NEITHER.');
   }
+  const crmEnabled = dashboardEnabled && env.MESSE_CRM_ENABLED !== 'false';
+  if (env.MESSE_CRM_ENABLED && !['true','false'].includes(env.MESSE_CRM_ENABLED)) throw new Error('Invalid MESSE_CRM_ENABLED');
   const aiExtractUrl = aiEnabled ? readUrl('N8N_AI_EXTRACT_URL') : '';
   const aiAskUrl = aiEnabled ? readUrl('N8N_AI_ASK_URL') : '';
+  if (aiEnabled) {
+    const trusted = new URL(env.N8N_AI_ALLOWED_ORIGIN || new URL(readUrl('N8N_CAPTURE_URL')).origin);
+    if (!['http:','https:'].includes(trusted.protocol) || trusted.username || trusted.password || trusted.pathname !== '/' || trusted.search || trusted.hash) throw new Error('Invalid trusted AI origin');
+    for (const target of [aiExtractUrl, aiAskUrl]) {
+      const u = new URL(target);
+      const loopback = ['127.0.0.1','localhost','[::1]'].includes(u.hostname);
+      if (u.origin !== trusted.origin || (secureCookies && u.protocol !== 'https:' && !loopback)) throw new Error('AI URLs must use the trusted upstream origin and HTTPS outside loopback in production');
+    }
+  }
   return {
     host: env.HOST || '127.0.0.1', port, origin: originUrl.origin,
     accessKey, sessionSecret, headerKey,
     captureUrl: readUrl('N8N_CAPTURE_URL'), statusUrl: readUrl('N8N_STATUS_URL'),
     publicEnabled: env.PUBLIC_FORM_ENABLED === 'true', secureCookies,
-    dashboardEnabled, dashboardDatabaseUrl, dashboardAccessKey,
+    dashboardEnabled, dashboardDatabaseUrl, dashboardAccessKey, crmEnabled,
     aiEnabled, aiExtractUrl, aiAskUrl,
     crmMaxResponseBytes: 262144, aiMaxResponseBytes: 65536, aiTimeoutMs: 25000,
     upstreamTimeoutMs: 20000,
@@ -235,29 +246,31 @@ function safeStatus(body, leadId) {
 }
 
 // WBS Messe-Hub FULL (issue #19) — AI response allowlists.
-const EXTRACT_FIELDS = new Set(['company_name','contact_name','email','phone','website','training_interest','budget_status','follow_up','follow_up_date','notes','summary']);
+const EXTRACT_LIMITS = { company_name:200, contact_name:160, email:254, phone:40, website:2048, training_interest:64, budget_status:64, follow_up:64, follow_up_date:10, notes:10000, summary:2000 };
+const EXTRACT_FIELDS = new Set(Object.keys(EXTRACT_LIMITS));
 function safeAiExtract(body, status) {
   if (status !== 200 || !body || typeof body !== 'object' || body.success !== true) return null;
   if (!body.extracted || typeof body.extracted !== 'object' || Array.isArray(body.extracted)) return null;
-  const str = (v, max) => typeof v === 'string' && v.length <= max && !/[ --]/.test(v) ? v : null;
+  const str = (v, max) => typeof v === 'string' && v.length <= max && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v) ? v : null;
   const extracted = {};
   for (const k of EXTRACT_FIELDS) {
     const v = body.extracted[k];
     if (v == null) { extracted[k] = null; continue; }
-    const safe = typeof v === 'string' ? str(v, k === 'notes' ? 20000 : k === 'summary' ? 2000 : 254) : null;
+    const safe = typeof v === 'string' ? str(v, EXTRACT_LIMITS[k]) : null;
     if (safe == null && v !== null && v !== undefined && v !== '') continue;
     extracted[k] = safe;
   }
   const uncertainty = Array.isArray(body.uncertainty_flags) ? body.uncertainty_flags.filter((x) => typeof x === 'string' && /^[a-z_]{1,64}$/.test(x)).slice(0, 20) : [];
   const confidence = body.confidence && typeof body.confidence === 'object' && !Array.isArray(body.confidence) ? Object.fromEntries(Object.entries(body.confidence).filter(([k, v]) => EXTRACT_FIELDS.has(k) && typeof v === 'number' && v >= 0 && v <= 1)) : {};
-  const assistant_message = typeof body.assistant_message === 'string' && body.assistant_message.length <= 4000 && !/[ --]/.test(body.assistant_message) ? body.assistant_message : '';
+  const assistant_message = typeof body.assistant_message === 'string' && body.assistant_message.length <= 4000 && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(body.assistant_message) ? body.assistant_message : '';
   return { success: true, extracted, confidence, uncertainty_flags: uncertainty, assistant_message, as_of: new Date().toISOString() };
 }
-function safeAiAsk(body, status) {
+function safeAiAsk(body, status, contextIds) {
   if (status !== 200 || !body || typeof body !== 'object' || body.success !== true) return null;
-  const answer = typeof body.answer === 'string' && body.answer.length <= 8000 && !/[ --]/.test(body.answer) ? body.answer : null;
+  const answer = typeof body.answer === 'string' && body.answer.length <= 8000 && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(body.answer) ? body.answer : null;
   if (answer === null) return null;
-  const cited = Array.isArray(body.cited_lead_ids) ? body.cited_lead_ids.filter((x) => typeof x === 'string' && LEAD_ID.test(x)).slice(0, 20) : [];
+  if (!Array.isArray(body.cited_lead_ids) || body.cited_lead_ids.length > 20 || !body.cited_lead_ids.every((x) => typeof x === 'string' && LEAD_ID.test(x) && contextIds.includes(x))) return null;
+  const cited = [...new Set(body.cited_lead_ids)];
   const tokens = body.tokens && typeof body.tokens === 'object' && Number.isInteger(body.tokens.total_input) && Number.isInteger(body.tokens.total_output) && body.tokens.total_input >= 0 && body.tokens.total_output >= 0 && body.tokens.total_input + body.tokens.total_output <= 50000
     ? { total_input: body.tokens.total_input, total_output: body.tokens.total_output } : null;
   return { success: true, answer, cited_lead_ids: cited, tokens, as_of: new Date().toISOString() };
@@ -370,7 +383,7 @@ export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date
     try {
       const result = await crm[kind](input, auditActor(req));
       if (result?.success === true) sendJson(res, 200, result);
-      else failure(res, 422, 'VALIDATION_FAILED', { details: result?.error?.code ? [{ field: 'action', code: 'INVALID_VALUE', message: result.error.code }] : [] });
+      else failure(res, ['MEMBERSHIP_CONFLICT','STALE_REVERT','ALREADY_REVERTED','UNKNOWN_OR_INACTIVE_GROUP','LEAD_NOT_IN_GROUP'].includes(result?.error?.code) ? 409 : 422, 'VALIDATION_FAILED', { details: result?.error?.code ? [{ field: 'action', code: 'INVALID_VALUE', message: result.error.code }] : [] });
     } catch { failure(res, 503, 'STATUS_UNAVAILABLE', { retryable: true, persistence: 'unknown' }); }
   };
   // -- AI proxy: extract and ask
@@ -379,7 +392,7 @@ export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date
     const payload = await readJson(req);
     const notes = typeof payload?.notes === 'string' ? payload.notes : '';
     const session_id = typeof payload?.session_id === 'string' && /^[A-Za-z0-9._:-]{1,80}$/.test(payload.session_id) ? payload.session_id : null;
-    if (!notes || notes.length < 10 || notes.length > 20000 || /[ --]/u.test(notes)) {
+    if (!notes || notes.length < 10 || notes.length > 10000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(notes)) {
       failure(res, 422, 'VALIDATION_FAILED', { details: [{ field: 'notes', code: 'INVALID_VALUE', message: 'Check this field.' }] }); return;
     }
     try {
@@ -393,14 +406,15 @@ export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date
     if (!requireOrigin(req, res) || !requireDashboardSession(req, res) || !applyRate(req, res, 'internal')) return;
     const payload = await readJson(req);
     const question = typeof payload?.question === 'string' ? payload.question : '';
-    const ctx = Array.isArray(payload?.context_lead_ids) ? payload.context_lead_ids.filter((x) => typeof x === 'string' && LEAD_ID.test(x)).slice(0, 20) : [];
+    const ctx = payload?.context_lead_ids;
+    if (!Array.isArray(ctx) || ctx.length < 1 || ctx.length > 20 || new Set(ctx).size !== ctx.length || !ctx.every((x) => typeof x === 'string' && LEAD_ID.test(x))) { failure(res, 422, 'VALIDATION_FAILED'); return; }
     const session_id = typeof payload?.session_id === 'string' && /^[A-Za-z0-9._:-]{1,80}$/.test(payload.session_id) ? payload.session_id : null;
-    if (!question || question.length < 3 || question.length > 2000 || /[ --]/u.test(question)) {
+    if (!question || question.length < 3 || question.length > 2000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(question)) {
       failure(res, 422, 'VALIDATION_FAILED', { details: [{ field: 'question', code: 'INVALID_VALUE', message: 'Check this field.' }] }); return;
     }
     try {
       const { response, body } = await callAiUpstream(config.aiAskUrl, { question, context_lead_ids: ctx, session_id });
-      const safe = safeAiAsk(body, response.status);
+      const safe = safeAiAsk(body, response.status, ctx);
       if (safe) sendJson(res, 200, safe);
       else failure(res, 503, 'STATUS_UNAVAILABLE', { retryable: true, persistence: 'unknown' });
     } catch { failure(res, 503, 'STATUS_UNAVAILABLE', { retryable: true, persistence: 'unknown' }); }
@@ -459,7 +473,7 @@ export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date
           authenticated: validSession(req, config, now),
           dashboard_authenticated: config.dashboardEnabled && validDashboardSession(req, config, now),
           public_form_enabled: config.publicEnabled,
-          crm_enabled: config.dashboardEnabled,
+          crm_enabled: config.crmEnabled,
           ai_enabled: config.aiEnabled,
         }); return;
       }
@@ -513,24 +527,24 @@ export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date
         return;
       }
       // WBS Messe-Hub FULL (issue #19) — CRM grouping (virtual) + optional AI proxy.
-      if (config.dashboardEnabled && route === '/api/dashboard/groups') {
+      if (config.crmEnabled && route === '/api/dashboard/groups') {
         if (req.method === 'GET') { await handleCrmList(req, res, url); return; }
         if (req.method === 'POST') { await handleCrmAction(req, res, 'merge'); return; }
         req.resume(); failure(res, 405, 'REQUEST_REJECTED'); return;
       }
-      if (config.dashboardEnabled && route === '/api/dashboard/groups/split') {
+      if (config.crmEnabled && route === '/api/dashboard/groups/split') {
         if (req.method !== 'POST') { req.resume(); failure(res, 405, 'REQUEST_REJECTED'); return; }
         await handleCrmAction(req, res, 'split'); return;
       }
-      if (config.dashboardEnabled && route === '/api/dashboard/groups/extract') {
+      if (config.crmEnabled && route === '/api/dashboard/groups/extract') {
         if (req.method !== 'POST') { req.resume(); failure(res, 405, 'REQUEST_REJECTED'); return; }
         await handleCrmAction(req, res, 'extract'); return;
       }
-      if (config.dashboardEnabled && route === '/api/dashboard/groups/ignore') {
+      if (config.crmEnabled && route === '/api/dashboard/groups/ignore') {
         if (req.method !== 'POST') { req.resume(); failure(res, 405, 'REQUEST_REJECTED'); return; }
         await handleCrmAction(req, res, 'ignore'); return;
       }
-      if (config.dashboardEnabled && route === '/api/dashboard/groups/revert') {
+      if (config.crmEnabled && route === '/api/dashboard/groups/revert') {
         if (req.method !== 'POST') { req.resume(); failure(res, 405, 'REQUEST_REJECTED'); return; }
         await handleCrmAction(req, res, 'revert'); return;
       }

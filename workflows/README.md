@@ -1,68 +1,56 @@
-# Adapted workflows (not activated)
+# Адаптированные WF-07/08 — R2, не активированы
 
-Design artifacts for issue #19 (Messe-Hub FULL). **Do not import into live n8n**
-without Owner approval and a staged credential-provisioning plan.
+См. `docs/WBS_MESSE_HUB_FULL_INTEGRATION.md` и `docs/R2_TEST_REPORT.md`.
+WF-A/B/C/D и их credentials не меняются. CRM работает напрямую через Gateway и
+PostgreSQL; WF-06/Data Table для группировок не требуется.
 
-## WF-06 — CRM grouping (merge/split/extract/ignore/revert)
+WF-07: header-auth webhook → проверка note 10–10000 → Basic LLM Chain + manual
+schema → проверка exact evidence/enum/limits → `{success,extracted,confidence:{},
+uncertainty_flags,assistant_message}`. Unknown → null, notes сохраняет введённый
+текст. Summary можно показать, но UI не отправляет его в WF-A. Перед анализом
+пользователь разрешает передачу note провайдеру, перед WF-A отдельно подтверждает
+каждое поле. Никакого auto-submit и tools. Заметки могут содержать PII: Owner
+утверждает провайдера/основание/retention до любых реальных данных.
 
-**Not needed.** The gateway now implements CRM grouping directly against Neon
-via `trade_fair.crm_group_*` SECURITY DEFINER functions (see
-`sql/production/dashboard_crm_v1_up.sql`). Compared to Yuriy's reference
-`06-Messe-Hub-Leads-zusammenfuehren-trennen.json` which used an n8n Data Table,
-the Neon implementation gives us ACID, backups, join-with-leads reporting and
-a durable audit history (`trade_fair.lead_group_audit`). The reference JSON is
-retained in `dashboard/reference-workflows/06-*.json` for traceability and
-NOT imported.
+WF-08: проверка question/context IDs → **параметризованный** вызов
+`trade_fair.ai_lead_context($1::jsonb)` → строгая проверка context → LLM Chain
+с запросом только разрешённых тем → проверка claims по доставленным фактам →
+детерминированный ответ с citation ID. Только 1–20 явно запрошенных ID; ни full
+snapshot, ни имени/почты/телефона/заметки в context. Raw question локально
+преобразуется в темы; она не идёт модели. Pseudonymous FAIR IDs остаются
+связуемыми идентификаторами. Model free text не выдаётся за доказанный факт.
 
-## WF-07 — Lead erfassen (Chat) → `wf-07-messe-hub-ai-extract.adapted.json`
+Credential mapping, только имена:
 
-- Replaces `langchain.chatTrigger` with a plain HTTP `webhook` so the Gateway
-  can call it server-to-server. The browser never sees n8n.
-- Switches `authentication` from the Yuriy chat trigger (anonymous) to **header
-  auth bound to the existing `WBS Trade Fair — Gateway Auth` credential**
-  (same as WF-A/B/C/D). No new password; the Gateway already carries that
-  value as `N8N_HEADER_KEY`.
-- Keeps Yuriy's prompt chain (`agent` + `lmChatOpenAi` + structured output
-  parser) exactly as he designed, but:
-  - Removes the final `httpRequest` node that auto-submitted to WF-A. V1
-    requires **human confirmation first**: the Gateway returns the extracted
-    fields and uncertainty flags to the browser; the user confirms, then the
-    browser POSTs the Gateway's existing `/api/leads` which runs WF-A.
-  - Clamps notes to 20 000 chars; refuses control characters.
-  - Shape of return: `{ success, extracted: {...}, confidence: {...}, uncertainty_flags: [], assistant_message }`.
-- `active: false`. Owner activates after staging.
+- `WBS Trade Fair — Gateway Auth`: существующий Header Auth, Gateway использует
+  `X-Trade-Fair-Key`. Проверить реальный binding в выделенном staging.
+- `WBS Trade Fair — AI Context (scoped read only)`: **новый scoped login binding**
+  только к NOLOGIN роли `trade_fair_ai_context`; Owner provision на staging.
+  Роль не может читать таблицы, вызывать dashboard_snapshot или писать CRM.
+  Широкую `WBS Trade Fair — Neon PostgreSQL` credential здесь не использовать.
+- `WBS Trade Fair — OpenAI  19.10`: имя в artifact; реальное значение не хранится
+  в Git. В локальном тесте заменено синтетической credential и mock endpoint.
 
-## WF-08 — Lead-Assistent (Chat) → `wf-08-messe-hub-ai-ask.adapted.json`
+`N8N_AI_EXTRACT_URL` и `N8N_AI_ASK_URL` задаются вместе; trusted origin через
+`N8N_AI_ALLOWED_ORIGIN` либо существующий capture origin. Внешний transport
+для HTTPS Gateway — HTTPS; loopback HTTP разрешён. API отключено fail-closed
+при пустых URL. Browser не обращается к webhook напрямую.
 
-- Also replaces `chatTrigger` with HTTP `webhook` + header auth (same credential).
-- Grounding: only `trade_fair.dashboard_snapshot(..)` output for the Gateway-
-  supplied `context_lead_ids` is passed to the agent; no raw `normalized_payload`,
-  no notes, no email bodies.
-- Response shape: `{ success, answer, cited_lead_ids: [...], tokens: { total_input, total_output } }`.
-  Gateway rejects any `cited_lead_ids` that are not valid FAIR UUIDs. Answers are
-  clamped to 8 000 chars; tokens capped at 50 000 combined.
-- Grounded-only directive in the system prompt: "If the context does not
-  contain the lead the user asks about, answer explicitly that you don't have it;
-  do not invent any facts, scores or emails."
-- No tools that write anywhere (calculator kept; no HTTP side-effects).
-- `active: false`. Owner activates after staging.
+Оба JSON: `active:false`, `store:false`, no tools/memory/autoFix/model retry,
+maxTokens 2000/1200, 20 s model timeout, 30 s workflow timeout, execution data
+success/error/manual/progress не сохраняется. Это workflow settings; реальные
+instance/proxy/provider logs и retention проверяются отдельно.
 
-## Required credentials (reference names only)
+Локальная проверка:
 
-- **`WBS Trade Fair — Gateway Auth`** (header auth). Already exists. Reused by
-  WF-07 and WF-08. The Gateway sends its value in `X-Trade-Fair-Key`.
-- **`WBS Trade Fair — Neon PostgreSQL`** (postgres). Already exists. Reused by
-  WF-08's postgres node (least-privilege via `dashboard_snapshot`).
-- **LLM provider credential** (OpenAI-compatible or Requesty, mirroring Yuriy's
-  `Requesty AI`). Owner provisions and binds to the WF-07/WF-08 agent nodes.
-  Not a Gateway concern.
+```sh
+npm ci --prefix gateway
+npm run test:workflows --prefix gateway
+```
 
-## Environment variables (names only, no values)
-
-| Name | Purpose |
-| --- | --- |
-| `N8N_AI_EXTRACT_URL` | HTTPS webhook URL for WF-07 (gateway → n8n). |
-| `N8N_AI_ASK_URL` | HTTPS webhook URL for WF-08 (gateway → n8n). |
-
-Both unset = AI features return 503 and the UI shows the German "nicht
-konfiguriert" state. Partial config refuses to start.
+Тест поднимает новый n8n 2.41.7 с отдельной SQLite, PostgreSQL 16 и HTTP mock
+OpenAI. Для CLI прогона только webhook/Respond заменены на manual entry/no-op;
+LLM, parser, Code и Postgres nodes исполняются настоящим n8n. Проверяются реальный
+response envelope, schema, context и отсутствие PII в запросе к mock model.
+Платные API и production не вызываются. Webhook header auth, live provider,
+HTTPS и реальный staging credential binding этим тестом не подтверждаются.

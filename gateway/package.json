@@ -2,12 +2,21 @@
   "name": "trade-fair-assistant-gateway",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node server.mjs",
-    "test": "node --test ../tests/*.mjs"
+    "test": "node --test ../tests/*.mjs",
+    "test:sql": "node --test ../tests/integration/crm_pg16.mjs",
+    "test:workflows": "node --test ../tests/integration/workflow_contracts.mjs ../tests/integration/n8n_local.mjs",
+    "test:browser": "node --test ../tests/browser/*.mjs",
+    "test:r2": "npm test && npm run test:sql && npm run test:workflows && npm run test:browser"
   },
   "dependencies": {
     "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "playwright": "1.58.2"
   }
 }
