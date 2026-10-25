@@ -1,0 +1,87 @@
+{
+  "name": "Messe-Hub — Lead-Assistent (AI ask, adapted V1, not live)",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "messe-hub/ai-ask", "authentication": "headerAuth", "responseMode": "responseNode", "options": {} },
+      "name": "Anfrage",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "credentials": { "httpHeaderAuth": { "name": "WBS Trade Fair — Gateway Auth" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Clamp request + enforce context-only grounding. Reject prompt-injection vectors.\nconst body = ($input.first().json.body) || $input.first().json || {};\nconst q = typeof body.question === 'string' ? body.question : '';\nconst ctx = Array.isArray(body.context_lead_ids) ? body.context_lead_ids : [];\nconst session_id = typeof body.session_id === 'string' && /^[A-Za-z0-9._:-]{1,80}$/.test(body.session_id) ? body.session_id : null;\nif (q.length < 3 || q.length > 2000 || /[\\x00-\\x1f\\x7f]/.test(q)) throw new Error('ASK_REQUEST_REJECTED');\nif (!ctx.every((x) => typeof x === 'string' && /^FAIR-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(x))) throw new Error('ASK_INVALID_CONTEXT');\nreturn [{ json: { question: q, context_lead_ids: ctx.slice(0, 20), session_id } }];"
+      },
+      "name": "Eingabe prüfen", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT trade_fair.dashboard_snapshot(50,0,'','','','','','created','desc') AS payload;",
+        "options": { "connectionTimeout": 10, "queryBatching": "single" }
+      },
+      "name": "Leads lesen",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [460, -180],
+      "credentials": { "postgres": { "name": "WBS Trade Fair — Neon PostgreSQL" } },
+      "notes": "Least-privilege via dashboard_snapshot SECURITY DEFINER. No new SQL grants."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Keep only the leads from context_lead_ids, strip raw payloads, notes and PII beyond name/email.\nconst snapshot = $('Leads lesen').first().json.payload || {};\nconst wanted = new Set($('Eingabe prüfen').first().json.context_lead_ids);\nconst allowed = (snapshot.leads || []).filter((l) => wanted.has(l.lead_id)).map((l) => ({\n  lead_id: l.lead_id,\n  company: l.company,\n  contact: l.contact,\n  score_band: l.score_band,\n  processing_status: l.processing_status,\n  email_status: l.email_status,\n  training_interest: l.training_interest,\n  budget_status: l.budget_status,\n  follow_up: l.follow_up,\n  duplicate_status: l.duplicate_status\n}));\nreturn [{ json: { question: $('Eingabe prüfen').first().json.question, context: allowed } }];"
+      },
+      "name": "Kontext filtern", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [700, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.question }}\n\nKONTEXT (nur diese Leads dürfen zitiert werden):\n{{ JSON.stringify($json.context, null, 2) }}",
+        "systemMessage": "Du bist Lead-Assistent. Antworte NUR mit Fakten aus dem KONTEXT. Wenn der KONTEXT die Frage nicht beantwortet, sage ehrlich 'dafür habe ich keine Daten'. Erfinde keine Scores, E-Mails oder Firmennamen. Zitiere Lead-IDs im Feld cited_lead_ids. Antworte maximal 1200 Zeichen."
+      },
+      "name": "Assistent", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 2, "position": [940, 0]
+    },
+    {
+      "parameters": { "model": "gpt-4.1-mini", "options": { "temperature": 0 } },
+      "name": "LLM", "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi", "typeVersion": 1,
+      "position": [940, 200],
+      "credentials": { "openAiApi": { "name": "WBS Trade Fair — OpenAI  19.10" } }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"success\": true,\n  \"answer\": \"\",\n  \"cited_lead_ids\": [],\n  \"tokens\": { \"total_input\": 0, \"total_output\": 0 }\n}"
+      },
+      "name": "Antwort-Schema", "type": "@n8n/n8n-nodes-langchain.outputParserStructured", "typeVersion": 1, "position": [1180, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": { "responseHeaders": { "entries": [
+          { "name": "Cache-Control", "value": "no-store" },
+          { "name": "Content-Type", "value": "application/json; charset=utf-8" }
+        ] } }
+      },
+      "name": "Antwort senden", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.5, "position": [1420, 0]
+    },
+    {
+      "parameters": {
+        "content": "## WF-08 adapted (V1)\\n\\n- Gateway-only (header auth). Grounded answers; cites only lead_ids from context.\\n- Reads via least-privilege dashboard_snapshot — no new grants.\\n- No tools that write. Tokens capped by Gateway.",
+        "height": 220, "width": 520, "color": 7
+      },
+      "name": "V1 Hinweis", "type": "n8n-nodes-base.stickyNote", "typeVersion": 1, "position": [0, -260]
+    }
+  ],
+  "connections": {
+    "Anfrage": { "main": [[{ "node": "Eingabe prüfen", "type": "main", "index": 0 }]] },
+    "Eingabe prüfen": { "main": [[{ "node": "Leads lesen", "type": "main", "index": 0 }]] },
+    "Leads lesen": { "main": [[{ "node": "Kontext filtern", "type": "main", "index": 0 }]] },
+    "Kontext filtern": { "main": [[{ "node": "Assistent", "type": "main", "index": 0 }]] },
+    "Assistent": { "main": [[{ "node": "Antwort senden", "type": "main", "index": 0 }]] },
+    "LLM": { "ai_languageModel": [[{ "node": "Assistent", "type": "ai_languageModel", "index": 0 }]] },
+    "Antwort-Schema": { "ai_outputParser": [[{ "node": "Assistent", "type": "ai_outputParser", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null, "pinData": {}, "versionId": null, "triggerCount": 0, "tags": []
+}

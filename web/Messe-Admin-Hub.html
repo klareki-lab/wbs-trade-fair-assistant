@@ -30,9 +30,12 @@
     <button class="nav on" type="button" data-go="top"><svg class="i"><use href="#i-dash"/></svg><span class="lbl">Dashboard</span></button>
     <button class="nav" type="button" data-go="tabelle" data-tab="all"><svg class="i"><use href="#i-db"/></svg><span class="lbl">Lead-Datenbank</span></button>
     <button class="nav" type="button" data-go="tabelle" data-tab="dups"><svg class="i"><use href="#i-copy"/></svg><span class="lbl">Duplikate</span><span class="badge" id="navDup"></span></button>
+    <button class="nav" type="button" data-go="gruppen"><svg class="i"><use href="#i-link"/></svg><span class="lbl">CRM-Gruppen</span><span class="badge" id="navGroups"></span></button>
+    <div class="nav-label">Werkzeuge</div>
+    <button class="nav" type="button" id="openAiExtract" aria-haspopup="dialog"><svg class="i"><use href="#i-note"/></svg><span class="lbl">Lead erfassen (AI)</span><span class="badge" id="navAiExtract" hidden>aus</span></button>
+    <button class="nav" type="button" id="openAiAsk" aria-haspopup="dialog"><svg class="i"><use href="#i-spark"/></svg><span class="lbl">Lead-Assistent</span><span class="badge" id="navAiAsk" hidden>aus</span></button>
     <div class="nav-label">Navigation</div>
     <a class="nav" href="/"><svg class="i"><use href="#i-note"/></svg><span class="lbl">Zum Formular</span></a>
-    
     <div class="side-foot">
       <div class="live"><i class="pulse" id="pulse"></i><span id="liveText" role="status">Verbinde …</span></div>
       <div class="user-row">
@@ -49,8 +52,8 @@
         <p id="pageSub">Überblick über alle Messe-Leads</p>
       </div>
       <div class="head-actions">
-        
-        <a class="btn primary" href="/"><svg class="i"><use href="#i-plus"/></svg>Lead erfassen</a>
+        <button class="btn" type="button" id="headAiAsk"><svg class="i"><use href="#i-spark"/></svg>Assistent fragen</button>
+        <button class="btn primary" type="button" id="headAiExtract"><svg class="i"><use href="#i-plus"/></svg>Neuer Lead (AI)</button>
       </div>
     </div>
 
@@ -75,7 +78,7 @@
 
     <div class="card table-card" id="tabelle">
       <div class="card-head">
-        <div><h2>Lead-Datenbank</h2><p>Neon PostgreSQL · Live-Status · schreibgeschützt</p></div>
+        <div><h2>Lead-Datenbank</h2><p>Neon PostgreSQL · Live-Status</p></div>
         <div class="tools">
           <div class="seg" id="tabs"></div><select id="filterBand" aria-label="Scoring"><option value="">Alle Scores</option><option>HOT</option><option>WARM</option><option>COLD</option><option value="UNSCORED">Unbewertet</option></select><select id="filterProcessing" aria-label="Verarbeitung"><option value="">Alle Status</option><option>pending</option><option>processing</option><option>completed</option><option>failed</option></select><select id="filterEmail" aria-label="E-Mail"><option value="">Alle E-Mails</option><option>pending</option><option>leased</option><option>sending</option><option>delivered</option><option>uncertain</option><option>failed</option><option value="none">Ohne E-Mail</option></select><select id="sort" aria-label="Sortieren"><option value="created:desc">Neueste</option><option value="created:asc">Älteste</option><option value="company:asc">Firma A–Z</option><option value="company:desc">Firma Z–A</option><option value="score:desc">Score absteigend</option><option value="score:asc">Score aufsteigend</option></select>
           <div class="search"><svg class="i"><use href="#i-search"/></svg><input type="search" id="search" placeholder="Suchen …"></div>
@@ -83,24 +86,80 @@
           <button class="btn icon" type="button" id="refreshBtn" title="Jetzt aktualisieren"><svg class="i"><use href="#i-refresh"/></svg></button>
         </div>
       </div>
-      
+      <div class="actionbar" id="actionbar" hidden>
+        <span id="auswahlText">0 ausgewählt</span>
+        <span class="grow"></span>
+        <button class="btn sm primary" type="button" id="mergeBtn" disabled title="Mindestens 2 Leads auswählen"><svg class="i"><use href="#i-link"/></svg>Zusammenführen</button>
+        <button class="btn sm" type="button" id="ignoreBtn" disabled>Als Duplikate ignorieren</button>
+        <button class="btn sm" type="button" id="clearSelBtn">Auswahl aufheben</button>
+      </div>
       <div class="table-scroll" id="tableBox"><div class="empty">Lade Daten …</div></div>
-      <div class="table-foot" id="tableFoot"></div><div class="table-foot" class="pagination"><button class="btn sm" id="prev" type="button">← Zurück</button><span id="pageInfo">–</span><button class="btn sm" id="next" type="button">Weiter →</button></div>
+      <div class="table-foot" id="tableFoot"></div><div class="table-foot pagination"><button class="btn sm" id="prev" type="button">← Zurück</button><span id="pageInfo">–</span><button class="btn sm" id="next" type="button">Weiter →</button></div>
+    </div>
+
+    <div class="card table-card" id="gruppen">
+      <div class="card-head">
+        <div><h2>CRM-Gruppen (Zusammenführungen &amp; Ignoriert)</h2><p>Virtuelle Gruppen in Neon · WF-A–D und Rohdaten unverändert</p></div>
+        <div class="tools">
+          <label class="toggle"><input type="checkbox" id="toggleRetired"> <span>Historie einblenden</span></label>
+          <button class="btn icon" type="button" id="refreshGroupsBtn" title="Gruppen neu laden"><svg class="i"><use href="#i-refresh"/></svg></button>
+        </div>
+      </div>
+      <div id="groupsBox"><div class="empty">Noch keine CRM-Gruppen angelegt.</div></div>
     </div>
   </main>
 </div>
-
 
 <div class="backdrop" id="backdrop"></div>
 <aside class="drawer" id="drawer" aria-hidden="true">
   <div class="d-head">
     <div class="ic" id="dIcon"><svg class="i"><use href="#i-note"/></svg></div>
     <div class="t"><strong id="dTitle"></strong><span id="dSub"></span></div>
-    
     <button class="btn icon" type="button" id="closeDrawer" title="Schließen"><svg class="i"><use href="#i-x"/></svg></button>
   </div>
   <div class="d-msgs" id="msgs"></div>
-  </aside>
+</aside>
 
+<!-- AI capture modal: WF-07 -->
+<div class="modal-backdrop" id="aiExtractBackdrop" hidden></div>
+<section class="modal" id="aiExtractModal" aria-hidden="true" hidden aria-labelledby="aiExtractTitle">
+  <div class="modal-head">
+    <strong id="aiExtractTitle">Lead erfassen · AI</strong>
+    <button class="btn icon" type="button" id="aiExtractClose" title="Schließen"><svg class="i"><use href="#i-x"/></svg></button>
+  </div>
+  <div class="modal-body">
+    <p class="muted">Füge die Gesprächsnotiz vom Messestand ein. Die KI extrahiert die Felder; vor dem Senden an WF-A bestätigst du jeden Wert.</p>
+    <div class="field"><label for="aiExtractInput">Notiz</label><textarea id="aiExtractInput" rows="7" maxlength="20000" placeholder="Gesprächsnotiz vom Messestand …"></textarea></div>
+    <p class="field-error" id="aiExtractError" role="alert" hidden></p>
+    <div class="aiPanel" id="aiExtractPanel" hidden>
+      <h3>KI-Vorschlag <span class="muted" id="aiExtractMeta"></span></h3>
+      <form id="aiExtractForm" novalidate></form>
+      <ul class="warnings" id="aiExtractWarnings"></ul>
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn" type="button" id="aiExtractAnalyze">Analysieren</button>
+    <button class="btn primary" type="button" id="aiExtractSubmit" disabled>An WF-A senden</button>
+  </div>
+</section>
 
-<div class="toast" id="toast" role="alert"></div><script type="module" src="/dashboard.js"></script></body></html>
+<!-- AI assistant modal: WF-08 -->
+<div class="modal-backdrop" id="aiAskBackdrop" hidden></div>
+<section class="modal" id="aiAskModal" aria-hidden="true" hidden aria-labelledby="aiAskTitle">
+  <div class="modal-head">
+    <strong id="aiAskTitle">Lead-Assistent</strong>
+    <button class="btn icon" type="button" id="aiAskClose" title="Schließen"><svg class="i"><use href="#i-x"/></svg></button>
+  </div>
+  <div class="modal-body">
+    <p class="muted">Fragen zur aktuellen Lead-Liste. Antworten dürfen nur Lead-IDs aus deiner Auswahl zitieren.</p>
+    <div id="aiAskThread" class="chat-thread"></div>
+    <p class="field-error" id="aiAskError" role="alert" hidden></p>
+  </div>
+  <div class="modal-foot">
+    <input id="aiAskInput" type="text" maxlength="2000" placeholder="Frage an den Lead-Assistenten …" aria-label="Frage">
+    <button class="btn primary" type="button" id="aiAskSend">Senden</button>
+  </div>
+</section>
+
+<script type="module" src="/dashboard.js"></script>
+</body></html>

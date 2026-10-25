@@ -1,0 +1,68 @@
+{
+  "name": "Messe-Hub — Lead erfassen (AI extract, adapted V1, not live)",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "messe-hub/ai-extract", "authentication": "headerAuth", "responseMode": "responseNode", "options": {} },
+      "name": "Anfrage",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "credentials": { "httpHeaderAuth": { "name": "WBS Trade Fair — Gateway Auth" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Clamp input server-side; reject empty or oversize notes and control chars.\nconst body = ($input.first().json.body) || $input.first().json || {};\nconst notes = typeof body.notes === 'string' ? body.notes : '';\nconst session_id = typeof body.session_id === 'string' && /^[A-Za-z0-9._:-]{1,80}$/.test(body.session_id) ? body.session_id : null;\nif (notes.length < 10 || notes.length > 20000 || /[\\x00-\\x1f\\x7f]/.test(notes)) throw new Error('EXTRACT_REQUEST_REJECTED');\nreturn [{ json: { notes, session_id } }];"
+      },
+      "name": "Eingabe prüfen", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.notes }}",
+        "systemMessage": "Extrahiere strukturierte Lead-Felder aus der Messe-Notiz. Erfinde keine Felder. Jedes Feld ohne klaren Hinweis -> null. Markiere Unsicherheiten in uncertainty_flags. Antworte NUR mit JSON-Schema."
+      },
+      "name": "KI Extraktor", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 2, "position": [460, 0]
+    },
+    {
+      "parameters": { "model": "gpt-4.1-mini", "options": { "temperature": 0 } },
+      "name": "LLM", "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi", "typeVersion": 1,
+      "position": [460, 180],
+      "credentials": { "openAiApi": { "name": "WBS Trade Fair — OpenAI  19.10" } }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"success\": true,\n  \"extracted\": {\n    \"company_name\": \"\",\n    \"contact_name\": \"\",\n    \"email\": \"\",\n    \"phone\": \"\",\n    \"website\": \"\",\n    \"training_interest\": \"\",\n    \"budget_status\": \"\",\n    \"follow_up\": \"\",\n    \"follow_up_date\": \"\",\n    \"notes\": \"\",\n    \"summary\": \"\"\n  },\n  \"confidence\": {},\n  \"uncertainty_flags\": [],\n  \"assistant_message\": \"\"\n}"
+      },
+      "name": "Lead-Felder (Schema)", "type": "@n8n/n8n-nodes-langchain.outputParserStructured", "typeVersion": 1, "position": [700, 180]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseHeaders": { "entries": [
+            { "name": "Cache-Control", "value": "no-store" },
+            { "name": "Content-Type", "value": "application/json; charset=utf-8" }
+          ] }
+        }
+      },
+      "name": "Antwort senden", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.5, "position": [940, 0]
+    },
+    {
+      "parameters": {
+        "content": "## WF-07 adapted (V1)\\n\\n- Gateway-only (header auth). Browser never sees n8n.\\n- Returns {success, extracted, confidence, uncertainty_flags, assistant_message}.\\n- No auto-submit to WF-A. Human must confirm fields in the Admin UI.\\n- OpenAI credential name only; Owner provisions the value.",
+        "height": 240, "width": 520, "color": 7
+      },
+      "name": "V1 Hinweis", "type": "n8n-nodes-base.stickyNote", "typeVersion": 1, "position": [0, -260]
+    }
+  ],
+  "connections": {
+    "Anfrage": { "main": [[{ "node": "Eingabe prüfen", "type": "main", "index": 0 }]] },
+    "Eingabe prüfen": { "main": [[{ "node": "KI Extraktor", "type": "main", "index": 0 }]] },
+    "KI Extraktor": { "main": [[{ "node": "Antwort senden", "type": "main", "index": 0 }]] },
+    "LLM": { "ai_languageModel": [[{ "node": "KI Extraktor", "type": "ai_languageModel", "index": 0 }]] },
+    "Lead-Felder (Schema)": { "ai_outputParser": [[{ "node": "KI Extraktor", "type": "ai_outputParser", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null, "pinData": {}, "versionId": null, "triggerCount": 0, "tags": []
+}
