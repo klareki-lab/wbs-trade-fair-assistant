@@ -26,7 +26,7 @@ function renderTable(){
   $('tabs').innerHTML=[['all','Alle Leads'],['dups','Duplikate']].map(([k,t])=>`<button type="button" class="btn sm ${tab===k?'primary':''}" data-tab="${k}">${t}</button>`).join('');
   if(!items.length){$('tableBox').innerHTML='<div class="empty">Keine Leads für die aktuelle Auswahl gefunden.</div>'}
   else $('tableBox').innerHTML=`<table><thead><tr><th>Erfasst</th><th>Firma / Kontakt</th><th>Score</th><th>Verarbeitung</th><th>E-Mail</th><th>Duplikat</th><th>Details</th></tr></thead><tbody>`+
-    items.map(l=>`<tr><td>${esc(date(l.created_at))}</td><td><strong>${textIf(l.company)}</strong><br><span class="muted">${textIf(l.contact)} · ${textIf(l.email)}</span></td><td>${pill(l.score_band||'UNSCORED')} ${l.score_total==null?'–':esc(l.score_total)+'/100'}</td><td>${pill(l.processing_status)}${l.processing_error?'<br><span class="p-err">'+esc(l.processing_error)+'</span>':''}</td><td>${pill(l.email_status||'none')}${l.email_error?'<br><span class="p-err">'+esc(l.email_error)+'</span>':''}</td><td>${pill(l.duplicate_status)}</td><td>${detailLink(l.lead_id)}</td></tr>`).join('')+'</tbody></table>';
+    items.map(l=>`<tr data-id="${esc(l.lead_id)}" tabindex="0" role="button" aria-label="Details für ${esc(l.company||l.lead_id)} öffnen"><td>${esc(date(l.created_at))}</td><td><strong>${textIf(l.company)}</strong><br><span class="muted">${textIf(l.contact)} · ${textIf(l.email)}</span></td><td>${pill(l.score_band||'UNSCORED')} ${l.score_total==null?'–':esc(l.score_total)+'/100'}</td><td>${pill(l.processing_status)}${l.processing_error?'<br><span class="p-err">'+esc(l.processing_error)+'</span>':''}</td><td>${pill(l.email_status||'none')}${l.email_error?'<br><span class="p-err">'+esc(l.email_error)+'</span>':''}</td><td>${pill(l.duplicate_status)}</td><td>${detailLink(l.lead_id)}</td></tr>`).join('')+'</tbody></table>';
   $('pageInfo').textContent=`Seite ${current.page} · ${total} Treffer`;
   $('prev').disabled=current.page===1;$('next').disabled=current.page*current.limit>=total;
   $('tableFoot').textContent=`${items.length} angezeigt · ${total} gefilterte Einträge · Keine Änderung an Neon`;
@@ -49,7 +49,26 @@ let debounce;
 $('search').addEventListener('input',e=>{clearTimeout(debounce);debounce=setTimeout(()=>{current.search=e.target.value;current.page=1;load()},280)});
 for(const [id,key]of [['filterBand','band'],['filterProcessing','processing'],['filterEmail','email']])$(id).addEventListener('change',e=>{current[key]=e.target.value;current.page=1;load()});
 $('sort').addEventListener('change',e=>{[current.sort,current.direction]=e.target.value.split(':');current.page=1;load()});
-$('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;tab=b.dataset.tab;current.duplicate=tab==='dups'?'yes':'';current.page=1;load()});
+function selectTab(next){
+ if(next!=='all'&&next!=='dups')return;
+ tab=next;
+ current.duplicate=tab==='dups'?'yes':'';
+ // Clicking a tab is a navigation intent: clear mutually-exclusive filters that could
+ // zero out the duplicate view (e.g. band=UNSCORED + processing=completed from an earlier search).
+ current.band='';current.processing='';current.email='';current.search='';
+ const search=$('search');if(search)search.value='';
+ for(const [id,key]of [['filterBand','band'],['filterProcessing','processing'],['filterEmail','email']]){const el=$(id);if(el)el.value=''}
+ current.page=1;load();
+}
+function resetFilters(){
+ current.search='';current.band='';current.processing='';current.email='';current.duplicate='';tab='all';
+ const search=$('search');if(search)search.value='';
+ for(const [id,key]of [['filterBand','band'],['filterProcessing','processing'],['filterEmail','email']]){const el=$(id);if(el)el.value=''}
+ current.page=1;load();
+}
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;selectTab(b.dataset.tab)});
+document.querySelectorAll('.side .nav[data-tab]').forEach(b=>b.addEventListener('click',()=>selectTab(b.dataset.tab)));
+$('resetFiltersBtn')?.addEventListener('click',resetFilters);
 $('prev').addEventListener('click',()=>{if(current.page>1){current.page--;load()}});
 $('next').addEventListener('click',()=>{if(current.page*current.limit<total){current.page++;load()}});
 $('refreshBtn').addEventListener('click',load);
@@ -71,7 +90,16 @@ function showDetail(id){
  content('Company Research',`<pre class="detailJson">${esc(l.company_research?JSON.stringify(l.company_research,null,2):'Nicht vorhanden / noch nicht verarbeitet')}</pre>`);
  $('drawer').classList.add('open');$('backdrop').classList.add('open');$('drawer').setAttribute('aria-hidden','false');
 }
-$('tableBox').addEventListener('click',e=>{const b=e.target.closest('button[data-id]');if(b)showDetail(b.dataset.id)});
+$('tableBox').addEventListener('click',e=>{
+ const b=e.target.closest('button[data-id]');if(b){showDetail(b.dataset.id);return}
+ const a=e.target.closest('a');if(a)return; // let real links behave
+ const row=e.target.closest('tr[data-id]');if(row)showDetail(row.dataset.id);
+});
+$('tableBox').addEventListener('keydown',e=>{
+ if(e.key!=='Enter'&&e.key!==' ')return;
+ const row=e.target.closest('tr[data-id]');if(!row)return;
+ e.preventDefault();showDetail(row.dataset.id);
+});
 const close=()=>{$('drawer').classList.remove('open');$('backdrop').classList.remove('open');$('drawer').setAttribute('aria-hidden','true')};
 $('closeDrawer').addEventListener('click',close);$('backdrop').addEventListener('click',close);document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 load();
