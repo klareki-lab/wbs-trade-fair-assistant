@@ -385,9 +385,30 @@ export function createGateway(config, { fetchImpl = globalThis.fetch, now = Date
         catch { failure(res, 503, 'STATUS_UNAVAILABLE', { retryable: true, persistence: 'unknown' }); }
         return;
       }
+      if (config.dashboardEnabled && route === '/dashboard-login.js') {
+        if (!['GET', 'HEAD'].includes(req.method)) { req.resume(); failure(res, 405, 'REQUEST_REJECTED'); return; }
+        req.resume();
+        const content = await readFile(path.join(WEB_ROOT, 'dashboard-login.js'));
+        res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Content-Length': content.length });
+        res.end(req.method === 'HEAD' ? undefined : content);
+        return;
+      }
       if (config.dashboardEnabled && ['/dashboard', '/dashboard.js', '/dashboard.css'].includes(route)) {
         if (!['GET', 'HEAD'].includes(req.method)) { req.resume(); failure(res, 405, 'REQUEST_REJECTED'); return; }
-        if (!requireDashboardSession(req, res)) return;
+        const dashboardAuthed = validDashboardSession(req, config, now);
+        if (!dashboardAuthed) {
+          // Serve the German login page only when a browser is asking for /dashboard.
+          // /dashboard.js and /dashboard.css stay strictly session-protected.
+          const acceptsHtml = (req.headers.accept || '').toLowerCase().includes('text/html');
+          if (route === '/dashboard' && acceptsHtml) {
+            req.resume();
+            const content = await readFile(path.join(WEB_ROOT, 'dashboard-login.html'));
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': content.length });
+            res.end(req.method === 'HEAD' ? undefined : content);
+            return;
+          }
+          req.resume(); failure(res, 401, 'AUTH_REQUIRED'); return;
+        }
         const filename = route === '/dashboard' ? 'Messe-Admin-Hub.html'
           : route === '/dashboard.js' ? 'dashboard.js' : 'dashboard.css';
         const type = route === '/dashboard' ? 'text/html; charset=utf-8'
