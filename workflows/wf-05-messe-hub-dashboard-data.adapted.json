@@ -1,0 +1,105 @@
+{
+  "name": "Messe-Hub — Daten fürs Dashboard (V1 adapted, do not import live)",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "messe-hub/dashboard-leads",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Daten anfordern",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "WBS Trade Fair — Dashboard Auth"
+        }
+      },
+      "notes": "V1: header auth only; same credential MUST NOT be reused by WF-A/B/C/D. No wildcard CORS."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Clamp pagination server-side; refuse unknown params.\nconst body = ($input.first().json.body) || $input.first().json || {};\nconst allowed = new Set(['page','limit','offset']);\nif (Object.keys(body).some(k => !allowed.has(k))) throw new Error('DASHBOARD_REQUEST_REJECTED');\nconst page = Number.isInteger(body.page) && body.page >= 1 && body.page <= 10000 ? body.page : 1;\nconst limit = Number.isInteger(body.limit) && body.limit >= 1 && body.limit <= 50 ? body.limit : 25;\nconst offset = Number.isInteger(body.offset) && body.offset >= 0 && body.offset <= 500000 ? body.offset : (page - 1) * limit;\nreturn [{ json: { page, limit, offset } }];"
+      },
+      "name": "Request validieren",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH ranked AS (\n  SELECT s.lead_id, s.created_at, s.processing_status, s.duplicate_status, s.review_required,\n         co.company_name, ct.contact_name, r.score_band\n  FROM trade_fair.lead_submissions s\n  JOIN trade_fair.companies co ON co.company_id = s.company_id\n  LEFT JOIN trade_fair.contacts ct ON ct.contact_id = s.contact_id\n  LEFT JOIN trade_fair.processing_results r ON r.lead_id = s.lead_id\n)\nSELECT (SELECT count(*) FROM ranked)::bigint AS total,\n       COALESCE(json_agg(x ORDER BY x.created_at DESC) FILTER (WHERE x.lead_id IS NOT NULL), '[]'::json) AS leads\nFROM (\n  SELECT lead_id, created_at, processing_status, duplicate_status, review_required,\n         company_name, contact_name, score_band\n  FROM ranked\n  ORDER BY created_at DESC\n  LIMIT $2::int OFFSET $3::int\n) x;",
+        "options": {
+          "connectionTimeout": 10,
+          "queryBatching": "single",
+          "queryReplacement": "={{ [1, $('Request validieren').first().json.limit, $('Request validieren').first().json.offset] }}"
+        }
+      },
+      "name": "Leads lesen",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [460, 0],
+      "credentials": {
+        "postgres": {
+          "name": "WBS Trade Fair — Neon PostgreSQL (dashboard reader)"
+        }
+      },
+      "notes": "V1: least-privilege Neon role; SELECT-only on lead_submissions, companies, contacts and processing_results. No new grants; must match the role already used by WF-A/B/C/D (same credential object, not reused secret for Dashboard webhook auth)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Final response: strict allowlist + pagination echo. No raw payloads, notes, email, phone, website.\nconst v = $input.first().json;\nconst p = $('Request validieren').first().json;\nconst leads = Array.isArray(v.leads) ? v.leads : [];\nconst safe = leads.slice(0, p.limit).map((l) => ({\n  lead_id: String(l.lead_id || ''),\n  created_at: typeof l.created_at === 'string' ? l.created_at : (l.created_at ? new Date(l.created_at).toISOString() : null),\n  company_name: typeof l.company_name === 'string' ? l.company_name.slice(0, 200) : '',\n  contact_name: typeof l.contact_name === 'string' ? l.contact_name.slice(0, 200) : '',\n  processing_status: ['pending','processing','completed','failed'].includes(l.processing_status) ? l.processing_status : 'pending',\n  score_band: ['HOT','WARM','COLD'].includes(l.score_band) ? l.score_band : null,\n  duplicate_status: ['NEW','POSSIBLE_DUPLICATE','EXISTING_CONTACT'].includes(l.duplicate_status) ? l.duplicate_status : 'NEW',\n  review_required: Boolean(l.review_required),\n}));\nreturn [{ json: { success: true, total: Number(v.total || 0), page: p.page, limit: p.limit, leads: safe } }];"
+      },
+      "name": "Allowlist bauen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Cache-Control", "value": "no-store" },
+              { "name": "Content-Type", "value": "application/json; charset=utf-8" }
+            ]
+          }
+        }
+      },
+      "name": "Daten senden",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [940, 0]
+    },
+    {
+      "parameters": {
+        "content": "## Messe-Hub Dashboard V1 (adapted)\\n\\n- Webhook: POST /webhook/messe-hub/dashboard-leads (header auth only).\\n- No wildcard CORS; only the gateway may call this.\\n- Allowlist response: lead_id, created_at, company_name, contact_name, processing_status, score_band, duplicate_status, review_required.\\n- No notes, no email/phone, no raw payloads, no AI/company research.\\n- Pagination clamped: page 1-10000, limit 1-50.\\n- DO NOT IMPORT INTO LIVE n8n WITHOUT OWNER APPROVAL AND A SEPARATE SCOPED HEADER-AUTH CREDENTIAL.",
+        "height": 280,
+        "width": 520,
+        "color": 7
+      },
+      "name": "V1 Hinweis",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, -220]
+    }
+  ],
+  "connections": {
+    "Daten anfordern": { "main": [[{ "node": "Request validieren", "type": "main", "index": 0 }]] },
+    "Request validieren": { "main": [[{ "node": "Leads lesen", "type": "main", "index": 0 }]] },
+    "Leads lesen": { "main": [[{ "node": "Allowlist bauen", "type": "main", "index": 0 }]] },
+    "Allowlist bauen": { "main": [[{ "node": "Daten senden", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "pinData": {},
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}
