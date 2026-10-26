@@ -48,7 +48,10 @@ const server = http.createServer(async (req, res) => {
     const q = String(user.untrusted_question);
     const requested = q.replace(/^Return these attributes:\s*/i, '').split(',').map((s) => s.trim()).filter(Boolean);
     const claims = [];
-    for (const lead of ctx) for (const f of requested) if (Object.hasOwn(lead, f)) claims.push({ lead_id: lead.lead_id, field: f, value: lead[f] });
+    outer: for (const lead of ctx) for (const f of requested) {
+      if (claims.length >= 20) break outer;              // Honour WF-08 schema cap, as a well-behaved model would.
+      if (Object.hasOwn(lead, f)) claims.push({ lead_id: lead.lead_id, field: f, value: lead[f] });
+    }
     out = { claims, unavailable: claims.length === 0 };
   } else {
     out = {};

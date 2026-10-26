@@ -156,7 +156,8 @@
     <button class="btn icon" type="button" id="aiAskClose" title="Schließen"><svg class="i"><use href="#i-x"/></svg></button>
   </div>
   <div class="modal-body">
-    <p class="muted">Fragen zu Status, Score, Trainingsinteresse, Budget und Follow-up der ersten 20 angezeigten Leads. Deine Frage wird lokal auf erlaubte Themen reduziert. An das Modell gehen nur diese Themen, Lead-IDs und erlaubte Kategorien; keine Namen, E-Mails oder Notizen. Antworten beruhen auf geprüften Feldern.</p>
+    <p class="muted">Fragen zu Status, Score, Trainingsinteresse, Budget und Follow-up der ausgewählten Leads (oder, ohne Auswahl, der ersten 20 sichtbaren). Deine Frage wird lokal auf erlaubte Themen reduziert. An das Modell gehen nur diese Themen, Lead-IDs und erlaubte Kategorien; keine Namen, E-Mails oder Notizen. Antworten beruhen auf geprüften Feldern.</p>
+    <p class="muted" id="aiAskContextInfo" aria-live="polite"></p>
     <div id="aiAskThread" class="chat-thread"></div>
     <p class="field-error" id="aiAskError" role="alert" hidden></p>
   </div>

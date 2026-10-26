@@ -247,6 +247,17 @@ async function req(base, method, path, body) {
       q4.status === 200 && (q4.body?.cited_lead_ids || []).every((id) => id === leadId) && !/\b\d{1,3}\s*(?:\/\s*100|punkte|points)\b/i.test(q4.body?.answer || ''),
       `answer="${q4.body?.answer}"`);
 
+    // 7b. Truncation surfaces visibly when context exceeds the 20-claim cap.
+    //     Build the full 8-seed context and ask a multi-field question so the
+    //     stub emits enough claims to hit the cap; proxy must prefix answer with
+    //     '⚠ unvollständig' instead of silently dropping information.
+    const bigCtx = (await ownerPool.query("SELECT lead_id FROM trade_fair.lead_submissions ORDER BY created_at ASC LIMIT 15")).rows.map((r) => r.lead_id);
+    const qT = await req(base, 'POST', '/api/dashboard/ai/ask', { question: 'Welchen Score und welche Kategorie haben die Leads?', context_lead_ids: bigCtx, session_id: 'rc2-trunc' });
+    const qTAnswer = qT.body?.answer || '';
+    record('WF-08 truncation visible (⚠ unvollständig) when claims exceed 20',
+      qT.status === 200 && /unvollst[aä]ndig/i.test(qTAnswer),
+      `answer="${qTAnswer.slice(0, 180)}"`);
+
     // 8. Negative WF-07: user POSTs an invalid enum → mock capture validates and 422 details
     const bad = { ...payload, submission_id: 'rc2-bad-' + randomUUID(), training_interest: 'not-an-enum', notes: 'different body for new submission' };
     r = await req(base, 'POST', '/api/leads', bad);

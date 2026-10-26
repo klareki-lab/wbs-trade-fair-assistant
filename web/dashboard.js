@@ -117,6 +117,7 @@ function updateActionBar() {
   const n = selected.size;
   if (n > 0) { bar.hidden = false; setText($('auswahlText'), `${n} ausgewählt (maximal 20)`); $('mergeBtn').disabled = n < 2 || n > 20; $('ignoreBtn').disabled = n < 1 || n > 20; }
   else bar.hidden = true;
+  renderAiAskContextBadge();
 }
 
 async function load() {
@@ -566,8 +567,24 @@ window.addEventListener('beforeunload', (e) => { if (aiPending) { e.preventDefau
 function openAiAsk() {
   $('aiAskModal').hidden = false; $('aiAskBackdrop').hidden = false; $('aiAskModal').setAttribute('aria-hidden', 'false');
   clear($('aiAskThread')); $('aiAskError').hidden = true; $('aiAskInput').value = '';
+  renderAiAskContextBadge();
   if (!aiEnabled) { const err = $('aiAskError'); setText(err, 'WF-08 (Lead-Assistent) ist nicht konfiguriert. Owner aktiviert N8N_AI_ASK_URL.'); err.hidden = false; $('aiAskSend').disabled = true; }
   else $('aiAskSend').disabled = false;
+}
+// Context the assistant will see: selected leads if any; otherwise the leads
+// currently visible on screen. Capped at 20 (WF-08 / scoped ai_lead_context).
+function aiAskContextIds() {
+  const picked = [...selected].filter((x) => LEAD_ID.test(x));
+  if (picked.length) return { ids: picked.slice(0, 20), source: 'selected', total: picked.length };
+  const visible = items.slice(0, 20).map((l) => l.lead_id);
+  return { ids: visible, source: 'visible', total: items.length };
+}
+function renderAiAskContextBadge() {
+  const el = $('aiAskContextInfo'); if (!el) return;
+  const { ids, source, total } = aiAskContextIds();
+  const label = source === 'selected' ? 'Ausgewählte Leads' : 'Erste sichtbare Leads';
+  const truncated = total > ids.length ? ` (von ${total} — nur die ersten ${ids.length} werden an die KI übergeben)` : '';
+  setText(el, `${label}: ${ids.length}${truncated}`);
 }
 function closeAiAsk() { $('aiAskModal').hidden = true; $('aiAskBackdrop').hidden = true; $('aiAskModal').setAttribute('aria-hidden', 'true'); }
 async function aiAsk() {
@@ -577,13 +594,25 @@ async function aiAsk() {
   const userMsg = elem('div', 'msg user'); userMsg.appendChild(elem('div', 'msg-head', 'Du')); userMsg.appendChild(elem('div', 'msg-body', q)); thread.appendChild(userMsg);
   $('aiAskInput').value = ''; $('aiAskSend').disabled = true;
   try {
-    const ctx = items.slice(0, 20).map((l) => l.lead_id);
+    const { ids: ctx, source, total } = aiAskContextIds();
+    if (!ctx.length) { setText(err, 'Keine Leads im Kontext. Bitte Leads auswählen oder laden.'); err.hidden = false; return; }
     const { status, body } = await postJson('/api/dashboard/ai/ask', { question: q, context_lead_ids: ctx, session_id: sessionId });
     if (status !== 200 || !body.success) { setText(err, body?.error?.message || 'AI nicht erreichbar.'); err.hidden = false; return; }
+    // Transparent note so the Owner always sees which leads WF-08 saw.
+    const contextInfo = source === 'selected'
+      ? (total > ctx.length ? `Kontext: ${ctx.length} von ${total} ausgewählten Leads (Obergrenze 20).` : `Kontext: ${ctx.length} ausgewählte Lead(s).`)
+      : (total > ctx.length ? `Kontext: erste ${ctx.length} sichtbare Leads (insgesamt ${total}; keine Auswahl getroffen).` : `Kontext: ${ctx.length} sichtbare Lead(s).`);
     const aiMsg = elem('div', 'msg assistant'); aiMsg.appendChild(elem('div', 'msg-head', 'Lead-Assistent'));
+    aiMsg.appendChild(elem('div', 'msg-context', contextInfo));
     // Prefer the proxy's grouped summary when present; fall back to the raw answer.
     const summary = typeof body.answer_summary === 'string' && body.answer_summary.trim() ? body.answer_summary : body.answer;
     aiMsg.appendChild(elem('div', 'msg-body', summary));
+    // Transparent truncation marker — WF-08's parser schema caps claims at 20.
+    // The proxy forwards claim_count/claim_cap into body.answer when hit; this is a
+    // belt-and-braces visible warning when the Gateway allowlist carries the field.
+    if (body.claims_truncated === true || /^\s*20\b/.test(summary) && ctx.length > 20) {
+      aiMsg.appendChild(elem('div', 'msg-warn', '⚠ Ergebnis evtl. unvollständig (WF-08 liefert höchstens 20 Aussagen pro Antwort). Kontext einschränken für eine vollständige Antwort.'));
+    }
     const groups = Array.isArray(body.groups) ? body.groups : [];
     if (groups.length) {
       const det = document.createElement('details'); det.className = 'ai-groups'; det.appendChild(elem('summary', null, 'Details anzeigen (' + groups.reduce((n, g) => n + (g.count || 0), 0) + ')'));

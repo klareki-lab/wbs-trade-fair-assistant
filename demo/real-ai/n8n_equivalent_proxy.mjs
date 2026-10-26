@@ -313,10 +313,22 @@ async function handleAsk(req, res) {
   const unavailable = modelResult.parsed?.unavailable === true || !Array.isArray(modelResult.parsed?.claims) || modelResult.parsed.claims.length === 0;
   const grouping = groupPresent(unavailable, (modelResult.parsed.claims || []).filter((c) => out.cited_lead_ids.includes(c.lead_id)));
   if (grouping.presentation === 'grouped' || grouping.presentation === 'grouped-mixed' || grouping.presentation === 'grouped-unknown') metrics.wf08.grouped += 1; else metrics.wf08.ungrouped += 1;
+  // Truncation detection: WF-08's parser schema caps claims at 20. If the context
+  // covers more leads × requested fields than the cap can represent, the Owner must
+  // see "incomplete" — we never silently omit. Also surfaces when model hit the cap exactly.
+  const requestedFields = Array.isArray(fJson.requested_fields) ? fJson.requested_fields : [];
+  const expectedCells = fJson.context.length * Math.max(1, requestedFields.length);
+  const claimCount = Array.isArray(modelResult.parsed?.claims) ? modelResult.parsed.claims.length : 0;
+  const truncated = claimCount >= 20 && expectedCells > 20;
   // The Gateway's safeAiAsk whitelist drops unknown fields; replace the raw answer
   // with the grouped summary so it survives the strict allowlist and is visible in the UI.
-  out.answer = grouping.answer_summary || out.answer;
-  logLine({ event: 'wf08.ok', model: modelResult.meta.model, latency_ms: modelResult.meta.latency_ms, tokens_in: modelResult.meta.tokens_in, tokens_out: modelResult.meta.tokens_out, cited: out.cited_lead_ids.length, groups: grouping.groups.length, presentation: grouping.presentation });
+  // Prefix the user-visible answer with an explicit "unvollständig" marker when
+  // the 20-claim cap could have omitted facts, so the UI shows it even without a
+  // dedicated flag field (safeAiAsk only passes `answer`, `cited_lead_ids`, `tokens`).
+  let answer = grouping.answer_summary || out.answer;
+  if (truncated) answer = `⚠ Ergebnis unvollständig (${claimCount} von max. 20 Aussagen). ` + answer;
+  out.answer = answer;
+  logLine({ event: 'wf08.ok', model: modelResult.meta.model, latency_ms: modelResult.meta.latency_ms, tokens_in: modelResult.meta.tokens_in, tokens_out: modelResult.meta.tokens_out, cited: out.cited_lead_ids.length, claim_count: claimCount, expected_cells: expectedCells, truncated, groups: grouping.groups.length, presentation: grouping.presentation });
   return send(res, 200, out);
 }
 
