@@ -1,0 +1,17 @@
+[
+  {
+    "id": "UC-21",
+    "source": "Yuri messegespraeche-21-40.csv; ist_testdatensatz=true",
+    "notes": "Petra Lenz von dm-drogerie markt vor dem ersten Vortrag getroffen. Sie begleitet nach eigener Aussage ein regionales Team, das neue Mitarbeitende in den Märkten einarbeitet. Es geht um das Vorhaben „Lernbegleiter Startklar“, nicht um ein Training für Marktleitungen. Die Lernbegleiter kennen die Abläufe gut, erklären sie aber sehr unterschiedlich. Gewünscht sind kurze Übungen zum Erklären, Feedbackgeben und Prüfen, ob etwas wirklich verstanden wurde.\n\nPetra sprach von 24 Lernbegleitern, aufgeteilt auf zwei Gruppen mit jeweils zwölf Personen. Pro Person seien 750 Euro für das gesamte Programm vorgesehen. Ich habe nicht gefragt, ob die Summe bereits freigegeben oder nur eine Obergrenze ist. Ein Präsenzauftakt und zwei digitale Übungstermine wären passend; Start möglichst im März 2027. Reise- und Raumkosten sollen offenbar separat betrachtet werden.\n\nSie möchte keine langen Theorieblöcke, sondern Beispiele aus dem Arbeitsalltag. Neue Lernbegleiter sollen am Ende eine kurze Anleitung selbst durchführen können. Wir könnten eine gemeinsame Lernstruktur entwickeln und die ersten Übungseinheiten begleiten. Über eine technische Lernplattform haben wir nicht gesprochen.\n\nAls Kontakt gab sie lernbegleitung@dm.example an, ein gemeinsames Postfach ihres Teams. Bitte Petra in der Anrede nennen. Bis 06.11.2026 wünscht sie eine grobe Programmidee mit Kostenrahmen. Wer die Bestellung freigibt, konnte sie nicht abschließend sagen."
+  },
+  {
+    "id": "LIVE01-DE-02",
+    "source": "synthetic",
+    "notes": "Auf der fiktiven Messe spricht Nora Beispiel von Musterwerk Nord GmbH über KI-Automatisierung. Das Budget ist bereits freigegeben. Bitte innerhalb einer Woche nachfassen. E-Mail: nora@example.test. Telefon und Website wurden nicht genannt."
+  },
+  {
+    "id": "LIVE01-DE-03",
+    "source": "synthetic",
+    "notes": "Die fiktive Firma Lernraum Süd sucht ein Kommunikationstraining. Kontakt ist Tom Beispiel. Ein Budget wurde nicht besprochen, ebenso kein Termin für die Rückmeldung. E-Mail, Telefon und Webseite sind unbekannt."
+  }
+]

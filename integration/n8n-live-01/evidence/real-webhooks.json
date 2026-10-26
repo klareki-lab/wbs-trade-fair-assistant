@@ -1,0 +1,642 @@
+{
+  "sourceSha": "6b64f70d340c1bd9fcdefdfadcd27c35d566fd30",
+  "blackFixSha": "a9460564c54ebdc0359b65eae1f72d46111746e7",
+  "adaptations": "adapt-workflows.mjs (separate integration candidate, not original RC)",
+  "versions": [
+    {
+      "id": "live01-wf07",
+      "active": true,
+      "versionId": "caf68ca6-48bf-40b4-9fa4-c9a95aa4d77b",
+      "activeVersionId": "caf68ca6-48bf-40b4-9fa4-c9a95aa4d77b",
+      "webhookIds": [
+        {
+          "name": "Anfrage",
+          "webhookId": "72b1f1a9-ad90-463d-a14c-0585eaad7b83",
+          "path": "messe-hub/ai-extract"
+        }
+      ]
+    },
+    {
+      "id": "live01-wf08",
+      "active": true,
+      "versionId": "4f380f13-8e34-49ef-b0bc-058d5fb99ba3",
+      "activeVersionId": "4f380f13-8e34-49ef-b0bc-058d5fb99ba3",
+      "webhookIds": [
+        {
+          "name": "Anfrage",
+          "webhookId": "a07a8314-0ae9-49d6-8b27-14506340328f",
+          "path": "messe-hub/ai-ask"
+        }
+      ]
+    },
+    {
+      "id": "live01-wfa",
+      "active": true,
+      "versionId": "2926ba4b-fe34-4483-aad7-a84136805079",
+      "activeVersionId": "2926ba4b-fe34-4483-aad7-a84136805079",
+      "webhookIds": [
+        {
+          "name": "Webhook Trigger",
+          "webhookId": "f2b6e42b-09d5-4908-8ae6-c808dfe7eb59",
+          "path": "trade-fair/lead"
+        }
+      ]
+    },
+    {
+      "id": "9vp2hqXADW2rlNsl",
+      "active": true,
+      "versionId": "e459b39e-3d95-44c1-b5ce-0da16e853ab2",
+      "activeVersionId": "e459b39e-3d95-44c1-b5ce-0da16e853ab2",
+      "webhookIds": [
+        {
+          "name": "Status Webhook",
+          "webhookId": "9da9690e-92a2-4b98-a501-fb0df465abdb",
+          "path": "trade-fair/status"
+        }
+      ]
+    }
+  ],
+  "results": [
+    {
+      "case": "UC-21",
+      "http": 200,
+      "contentType": "application/json; charset=utf-8",
+      "durationMs": 2676,
+      "body": {
+        "success": true,
+        "extracted": {
+          "company_name": "dm-drogerie markt",
+          "contact_name": "Petra Lenz",
+          "email": "lernbegleitung@dm.example",
+          "phone": null,
+          "website": null,
+          "training_interest": "other",
+          "budget_status": "unknown",
+          "follow_up": "on_date",
+          "follow_up_date": "2026-11-06",
+          "notes": "Petra Lenz von dm-drogerie markt vor dem ersten Vortrag getroffen. Sie begleitet nach eigener Aussage ein regionales Team, das neue Mitarbeitende in den Märkten einarbeitet. Es geht um das Vorhaben „Lernbegleiter Startklar“, nicht um ein Training für Marktleitungen. Die Lernbegleiter kennen die Abläufe gut, erklären sie aber sehr unterschiedlich. Gewünscht sind kurze Übungen zum Erklären, Feedbackgeben und Prüfen, ob etwas wirklich verstanden wurde.\n\nPetra sprach von 24 Lernbegleitern, aufgeteilt auf zwei Gruppen mit jeweils zwölf Personen. Pro Person seien 750 Euro für das gesamte Programm vorgesehen. Ich habe nicht gefragt, ob die Summe bereits freigegeben oder nur eine Obergrenze ist. Ein Präsenzauftakt und zwei digitale Übungstermine wären passend; Start möglichst im März 2027. Reise- und Raumkosten sollen offenbar separat betrachtet werden.\n\nSie möchte keine langen Theorieblöcke, sondern Beispiele aus dem Arbeitsalltag. Neue Lernbegleiter sollen am Ende eine kurze Anleitung selbst durchführen können. Wir könnten eine gemeinsame Lernstruktur entwickeln und die ersten Übungseinheiten begleiten. Über eine technische Lernplattform haben wir nicht gesprochen.\n\nAls Kontakt gab sie lernbegleitung@dm.example an, ein gemeinsames Postfach ihres Teams. Bitte Petra in der Anrede nennen. Bis 06.11.2026 wünscht sie eine grobe Programmidee mit Kostenrahmen. Wer die Bestellung freigibt, konnte sie nicht abschließend sagen.",
+          "summary": null
+        },
+        "confidence": {},
+        "uncertainty_flags": [],
+        "assistant_message": "Jeden Wert prüfen und vor der Übertragung bestätigen."
+      }
+    },
+    {
+      "case": "LIVE01-DE-02",
+      "http": 200,
+      "contentType": "application/json; charset=utf-8",
+      "durationMs": 1738,
+      "body": {
+        "success": true,
+        "extracted": {
+          "company_name": "Musterwerk Nord GmbH",
+          "contact_name": "Nora Beispiel",
+          "email": "nora@example.test",
+          "phone": null,
+          "website": null,
+          "training_interest": "ai_automation",
+          "budget_status": "approved",
+          "follow_up": "within_one_week",
+          "follow_up_date": null,
+          "notes": "Auf der fiktiven Messe spricht Nora Beispiel von Musterwerk Nord GmbH über KI-Automatisierung. Das Budget ist bereits freigegeben. Bitte innerhalb einer Woche nachfassen. E-Mail: nora@example.test. Telefon und Website wurden nicht genannt.",
+          "summary": null
+        },
+        "confidence": {},
+        "uncertainty_flags": [],
+        "assistant_message": "Jeden Wert prüfen und vor der Übertragung bestätigen."
+      }
+    },
+    {
+      "case": "LIVE01-DE-03",
+      "http": 200,
+      "contentType": "application/json; charset=utf-8",
+      "durationMs": 2125,
+      "body": {
+        "success": true,
+        "extracted": {
+          "company_name": "Lernraum Süd",
+          "contact_name": "Tom Beispiel",
+          "email": null,
+          "phone": null,
+          "website": null,
+          "training_interest": "communication",
+          "budget_status": null,
+          "follow_up": null,
+          "follow_up_date": null,
+          "notes": "Die fiktive Firma Lernraum Süd sucht ein Kommunikationstraining. Kontakt ist Tom Beispiel. Ein Budget wurde nicht besprochen, ebenso kein Termin für die Rückmeldung. E-Mail, Telefon und Webseite sind unbekannt.",
+          "summary": null
+        },
+        "confidence": {},
+        "uncertainty_flags": [
+          "missing_budget_status",
+          "missing_follow_up"
+        ],
+        "assistant_message": "Jeden Wert prüfen und vor der Übertragung bestätigen."
+      }
+    },
+    {
+      "case": "Welchen Score hat der Lead?",
+      "http": 200,
+      "contentType": "application/json; charset=utf-8",
+      "durationMs": 1853,
+      "body": {
+        "success": true,
+        "answer": "FAIR-00000000-0000-4000-8000-000000000001: Kategorie = unbekannt\nFAIR-00000000-0000-4000-8000-000000000001: Score = unbekannt",
+        "cited_lead_ids": [
+          "FAIR-00000000-0000-4000-8000-000000000001"
+        ]
+      }
+    },
+    {
+      "case": "Welches Budget hat der Lead?",
+      "http": 200,
+      "contentType": "application/json; charset=utf-8",
+      "durationMs": 1216,
+      "body": {
+        "success": true,
+        "answer": "FAIR-00000000-0000-4000-8000-000000000001: Budget = planned",
+        "cited_lead_ids": [
+          "FAIR-00000000-0000-4000-8000-000000000001"
+        ]
+      }
+    },
+    {
+      "case": "Welche Trainingsinteressen hat der Lead?",
+      "http": 200,
+      "contentType": "application/json; charset=utf-8",
+      "durationMs": 1687,
+      "body": {
+        "success": true,
+        "answer": "FAIR-00000000-0000-4000-8000-000000000001: Trainingsinteresse = ai_automation",
+        "cited_lead_ids": [
+          "FAIR-00000000-0000-4000-8000-000000000001"
+        ]
+      }
+    },
+    {
+      "case": "ai-extract no auth",
+      "http": 403,
+      "contentType": null,
+      "durationMs": 116,
+      "body": {
+        "nonJson": true
+      }
+    },
+    {
+      "case": "ai-ask no auth",
+      "http": 403,
+      "contentType": null,
+      "durationMs": 64,
+      "body": {
+        "nonJson": true
+      }
+    }
+  ],
+  "executions": [
+    {
+      "id": "34",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "4f380f13-8e34-49ef-b0bc-058d5fb99ba3",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:19:04.832Z",
+      "stoppedAt": "2026-10-26T10:19:06.422Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 47,
+        "promptTokens": 727,
+        "totalTokens": 774
+      }
+    },
+    {
+      "id": "33",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "4f380f13-8e34-49ef-b0bc-058d5fb99ba3",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:19:03.596Z",
+      "stoppedAt": "2026-10-26T10:19:04.739Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 45,
+        "promptTokens": 727,
+        "totalTokens": 772
+      }
+    },
+    {
+      "id": "32",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "4f380f13-8e34-49ef-b0bc-058d5fb99ba3",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:19:01.786Z",
+      "stoppedAt": "2026-10-26T10:19:03.516Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 78,
+        "promptTokens": 730,
+        "totalTokens": 808
+      }
+    },
+    {
+      "id": "31",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:17:34.133Z",
+      "stoppedAt": "2026-10-26T10:17:35.495Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 51,
+        "promptTokens": 583,
+        "totalTokens": 634
+      }
+    },
+    {
+      "id": "30",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:17:32.930Z",
+      "stoppedAt": "2026-10-26T10:17:34.104Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 49,
+        "promptTokens": 583,
+        "totalTokens": 632
+      }
+    },
+    {
+      "id": "29",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:17:31.136Z",
+      "stoppedAt": "2026-10-26T10:17:32.838Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 82,
+        "promptTokens": 586,
+        "totalTokens": 668
+      }
+    },
+    {
+      "id": "28",
+      "workflowId": "live01-wf07",
+      "workflowVersionId": "caf68ca6-48bf-40b4-9fa4-c9a95aa4d77b",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:17:29.029Z",
+      "stoppedAt": "2026-10-26T10:17:31.098Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 142,
+        "promptTokens": 1377,
+        "totalTokens": 1519
+      }
+    },
+    {
+      "id": "27",
+      "workflowId": "live01-wf07",
+      "workflowVersionId": "caf68ca6-48bf-40b4-9fa4-c9a95aa4d77b",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:17:27.270Z",
+      "stoppedAt": "2026-10-26T10:17:28.969Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 145,
+        "promptTokens": 1386,
+        "totalTokens": 1531
+      }
+    },
+    {
+      "id": "26",
+      "workflowId": "live01-wf07",
+      "workflowVersionId": "caf68ca6-48bf-40b4-9fa4-c9a95aa4d77b",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:17:24.637Z",
+      "stoppedAt": "2026-10-26T10:17:27.223Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 207,
+        "promptTokens": 1644,
+        "totalTokens": 1851
+      }
+    },
+    {
+      "id": "25",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "status": "error",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:16:49.890Z",
+      "stoppedAt": "2026-10-26T10:16:58.061Z",
+      "lastNode": "Assistent",
+      "error": "Model output doesn't fit required format",
+      "tokenUsage": {
+        "completionTokens": 922,
+        "promptTokens": 1173,
+        "totalTokens": 2095
+      }
+    },
+    {
+      "id": "24",
+      "workflowId": "live01-wfa",
+      "workflowVersionId": "2926ba4b-fe34-4483-aad7-a84136805079",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:15:09.876Z",
+      "stoppedAt": "2026-10-26T10:15:10.182Z",
+      "lastNode": "Return Response"
+    },
+    {
+      "id": "23",
+      "workflowId": "live01-wfa",
+      "workflowVersionId": "2926ba4b-fe34-4483-aad7-a84136805079",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:14:53.550Z",
+      "stoppedAt": "2026-10-26T10:14:54.044Z",
+      "lastNode": "Return Response"
+    },
+    {
+      "id": "22",
+      "workflowId": "live01-wf07",
+      "workflowVersionId": "fe280316-f713-40e0-b2a9-5d66f766672d",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:12:54.938Z",
+      "stoppedAt": "2026-10-26T10:12:56.975Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 158,
+        "promptTokens": 1349,
+        "totalTokens": 1507
+      }
+    },
+    {
+      "id": "21",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:12:38.100Z",
+      "stoppedAt": "2026-10-26T10:12:39.491Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 51,
+        "promptTokens": 583,
+        "totalTokens": 634
+      }
+    },
+    {
+      "id": "20",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:12:36.746Z",
+      "stoppedAt": "2026-10-26T10:12:38.010Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 49,
+        "promptTokens": 583,
+        "totalTokens": 632
+      }
+    },
+    {
+      "id": "19",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:12:35.200Z",
+      "stoppedAt": "2026-10-26T10:12:36.715Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 82,
+        "promptTokens": 586,
+        "totalTokens": 668
+      }
+    },
+    {
+      "id": "18",
+      "workflowId": "live01-wf07",
+      "workflowVersionId": "fe280316-f713-40e0-b2a9-5d66f766672d",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:12:32.951Z",
+      "stoppedAt": "2026-10-26T10:12:35.075Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 171,
+        "promptTokens": 1337,
+        "totalTokens": 1508
+      }
+    },
+    {
+      "id": "17",
+      "workflowId": "live01-wf07",
+      "workflowVersionId": "fe280316-f713-40e0-b2a9-5d66f766672d",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:12:31.214Z",
+      "stoppedAt": "2026-10-26T10:12:32.910Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 140,
+        "promptTokens": 1346,
+        "totalTokens": 1486
+      }
+    },
+    {
+      "id": "16",
+      "workflowId": "live01-wf07",
+      "workflowVersionId": "fe280316-f713-40e0-b2a9-5d66f766672d",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:12:27.979Z",
+      "stoppedAt": "2026-10-26T10:12:31.172Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 257,
+        "promptTokens": 1604,
+        "totalTokens": 1861
+      }
+    },
+    {
+      "id": "15",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:09:42.813Z",
+      "stoppedAt": "2026-10-26T10:09:44.260Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 51,
+        "promptTokens": 583,
+        "totalTokens": 634
+      }
+    },
+    {
+      "id": "14",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:09:41.494Z",
+      "stoppedAt": "2026-10-26T10:09:42.698Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 49,
+        "promptTokens": 583,
+        "totalTokens": 632
+      }
+    },
+    {
+      "id": "13",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:09:39.747Z",
+      "stoppedAt": "2026-10-26T10:09:41.463Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 82,
+        "promptTokens": 586,
+        "totalTokens": 668
+      }
+    },
+    {
+      "id": "12",
+      "workflowId": "live01-wf07",
+      "workflowVersionId": "6269daf7-479d-4ef8-b8ec-ec0c09d88f68",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:09:37.173Z",
+      "stoppedAt": "2026-10-26T10:09:39.656Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 144,
+        "promptTokens": 1280,
+        "totalTokens": 1424
+      }
+    },
+    {
+      "id": "11",
+      "workflowId": "live01-wf07",
+      "workflowVersionId": "6269daf7-479d-4ef8-b8ec-ec0c09d88f68",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:09:34.710Z",
+      "stoppedAt": "2026-10-26T10:09:37.108Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 145,
+        "promptTokens": 1289,
+        "totalTokens": 1434
+      }
+    },
+    {
+      "id": "10",
+      "workflowId": "live01-wf07",
+      "workflowVersionId": "6269daf7-479d-4ef8-b8ec-ec0c09d88f68",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:09:31.810Z",
+      "stoppedAt": "2026-10-26T10:09:34.639Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 243,
+        "promptTokens": 1547,
+        "totalTokens": 1790
+      }
+    },
+    {
+      "id": "9",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:05:38.216Z",
+      "stoppedAt": "2026-10-26T10:05:39.664Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 51,
+        "promptTokens": 583,
+        "totalTokens": 634
+      }
+    },
+    {
+      "id": "8",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:05:36.992Z",
+      "stoppedAt": "2026-10-26T10:05:38.153Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 49,
+        "promptTokens": 583,
+        "totalTokens": 632
+      }
+    },
+    {
+      "id": "7",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:05:35.546Z",
+      "stoppedAt": "2026-10-26T10:05:36.906Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 82,
+        "promptTokens": 586,
+        "totalTokens": 668
+      }
+    },
+    {
+      "id": "6",
+      "workflowId": "live01-wf07",
+      "workflowVersionId": "93f35642-77e5-418b-a981-3d9166281573",
+      "status": "error",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:05:31.804Z",
+      "stoppedAt": "2026-10-26T10:05:35.503Z",
+      "lastNode": "KI Extraktor",
+      "error": "Model output doesn't fit required format",
+      "tokenUsage": {
+        "completionTokens": 312,
+        "promptTokens": 749,
+        "totalTokens": 1061
+      }
+    },
+    {
+      "id": "5",
+      "workflowId": "live01-wf07",
+      "workflowVersionId": "93f35642-77e5-418b-a981-3d9166281573",
+      "status": "error",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:05:27.694Z",
+      "stoppedAt": "2026-10-26T10:05:31.735Z",
+      "lastNode": "KI Extraktor",
+      "error": "Model output doesn't fit required format",
+      "tokenUsage": {
+        "completionTokens": 375,
+        "promptTokens": 758,
+        "totalTokens": 1133
+      }
+    }
+  ],
+  "failures": []
+}

@@ -1,0 +1,27 @@
+{
+  "observedUtc": "2026-10-26T10:22:25.768397Z",
+  "scope": "read-only metadata; compared with Stage-1 observations, not a production E2E",
+  "productionMutations": false,
+  "gateway": {
+    "containerId": "e82147db23834bd8e8f54d6219108c0fdd710eff552728ff11bac16cc096b437",
+    "startedAt": "2026-10-25T08:43:43.548648184Z",
+    "serverSha256": "3ad7fd3cdbb4eafd4d2be3fa90e6a41a295c417758d35ac02287d821ddfc853f"
+  },
+  "n8n": {
+    "containerId": "70a3efb201bfbd08e77a96ab136bb0e919bf88e651c587209ce6cced6dee5986",
+    "startedAt": "2026-10-25T09:23:03.524803415Z"
+  },
+  "wbsVersions": [
+    "0c87ae2a-8199-4520-911d-d5869d17601b",
+    "c68f7272-56bb-4cd8-a777-f863f04e4697",
+    "b2c08c88-10af-4bdd-b28c-76b0c750b171",
+    "a876cc62-f54e-432a-a779-a36be3d1dcbf"
+  ],
+  "wbsAllActive": true,
+  "identifiedPamVersions": [
+    "fc4aaeb8-ad22-47dd-9800-ba9c6455bc33",
+    "4f3f69c4-7db2-4325-bd6f-7a1f263eb6a6",
+    "69d8a4b7-de19-4af8-a916-397d09dd050a"
+  ],
+  "identifiedPamAllInactive": true
+}

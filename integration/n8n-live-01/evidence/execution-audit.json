@@ -1,0 +1,605 @@
+[
+  {
+    "executionId": "42",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "4f380f13-8e34-49ef-b0bc-058d5fb99ba3",
+    "status": "error",
+    "startedAt": "2026-10-26T10:20:05.394Z",
+    "stoppedAt": "2026-10-26T10:20:05.569Z",
+    "lastNode": "Leads lesen",
+    "error": "UNKNOWN_CONTEXT",
+    "actualModelInputRecorded": false,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "41",
+    "workflowId": "live01-wfa",
+    "workflowVersionId": "2926ba4b-fe34-4483-aad7-a84136805079",
+    "status": "success",
+    "startedAt": "2026-10-26T10:20:05.273Z",
+    "stoppedAt": "2026-10-26T10:20:05.341Z",
+    "lastNode": "Return Response",
+    "actualModelInputRecorded": false
+  },
+  {
+    "executionId": "40",
+    "workflowId": "live01-wfa",
+    "workflowVersionId": "2926ba4b-fe34-4483-aad7-a84136805079",
+    "status": "success",
+    "startedAt": "2026-10-26T10:20:05.173Z",
+    "stoppedAt": "2026-10-26T10:20:05.249Z",
+    "lastNode": "Return Response",
+    "actualModelInputRecorded": false
+  },
+  {
+    "executionId": "39",
+    "workflowId": "live01-wfa",
+    "workflowVersionId": "2926ba4b-fe34-4483-aad7-a84136805079",
+    "status": "success",
+    "startedAt": "2026-10-26T10:20:04.941Z",
+    "stoppedAt": "2026-10-26T10:20:05.141Z",
+    "lastNode": "Return Response",
+    "actualModelInputRecorded": false
+  },
+  {
+    "executionId": "38",
+    "workflowId": "live01-wfa",
+    "workflowVersionId": "2926ba4b-fe34-4483-aad7-a84136805079",
+    "status": "success",
+    "startedAt": "2026-10-26T10:20:04.851Z",
+    "stoppedAt": "2026-10-26T10:20:05.091Z",
+    "lastNode": "Return Response",
+    "actualModelInputRecorded": false
+  },
+  {
+    "executionId": "37",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "4f380f13-8e34-49ef-b0bc-058d5fb99ba3",
+    "status": "success",
+    "startedAt": "2026-10-26T10:20:03.176Z",
+    "stoppedAt": "2026-10-26T10:20:04.775Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 126,
+      "promptTokens": 733,
+      "totalTokens": 859
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "36",
+    "workflowId": "9vp2hqXADW2rlNsl",
+    "workflowVersionId": "e459b39e-3d95-44c1-b5ce-0da16e853ab2",
+    "status": "success",
+    "startedAt": "2026-10-26T10:20:02.964Z",
+    "stoppedAt": "2026-10-26T10:20:03.142Z",
+    "lastNode": "Return Status",
+    "actualModelInputRecorded": false
+  },
+  {
+    "executionId": "35",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "4f380f13-8e34-49ef-b0bc-058d5fb99ba3",
+    "status": "success",
+    "startedAt": "2026-10-26T10:19:14.227Z",
+    "stoppedAt": "2026-10-26T10:19:19.201Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 672,
+      "promptTokens": 1317,
+      "totalTokens": 1989
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "34",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "4f380f13-8e34-49ef-b0bc-058d5fb99ba3",
+    "status": "success",
+    "startedAt": "2026-10-26T10:19:04.832Z",
+    "stoppedAt": "2026-10-26T10:19:06.422Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 47,
+      "promptTokens": 727,
+      "totalTokens": 774
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "33",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "4f380f13-8e34-49ef-b0bc-058d5fb99ba3",
+    "status": "success",
+    "startedAt": "2026-10-26T10:19:03.596Z",
+    "stoppedAt": "2026-10-26T10:19:04.739Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 45,
+      "promptTokens": 727,
+      "totalTokens": 772
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "32",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "4f380f13-8e34-49ef-b0bc-058d5fb99ba3",
+    "status": "success",
+    "startedAt": "2026-10-26T10:19:01.786Z",
+    "stoppedAt": "2026-10-26T10:19:03.516Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 78,
+      "promptTokens": 730,
+      "totalTokens": 808
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "31",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+    "status": "success",
+    "startedAt": "2026-10-26T10:17:34.133Z",
+    "stoppedAt": "2026-10-26T10:17:35.495Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 51,
+      "promptTokens": 583,
+      "totalTokens": 634
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "30",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+    "status": "success",
+    "startedAt": "2026-10-26T10:17:32.930Z",
+    "stoppedAt": "2026-10-26T10:17:34.104Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 49,
+      "promptTokens": 583,
+      "totalTokens": 632
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "29",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+    "status": "success",
+    "startedAt": "2026-10-26T10:17:31.136Z",
+    "stoppedAt": "2026-10-26T10:17:32.838Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 82,
+      "promptTokens": 586,
+      "totalTokens": 668
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "28",
+    "workflowId": "live01-wf07",
+    "workflowVersionId": "caf68ca6-48bf-40b4-9fa4-c9a95aa4d77b",
+    "status": "success",
+    "startedAt": "2026-10-26T10:17:29.029Z",
+    "stoppedAt": "2026-10-26T10:17:31.098Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 142,
+      "promptTokens": 1377,
+      "totalTokens": 1519
+    },
+    "actualModelInputRecorded": true
+  },
+  {
+    "executionId": "27",
+    "workflowId": "live01-wf07",
+    "workflowVersionId": "caf68ca6-48bf-40b4-9fa4-c9a95aa4d77b",
+    "status": "success",
+    "startedAt": "2026-10-26T10:17:27.270Z",
+    "stoppedAt": "2026-10-26T10:17:28.969Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 145,
+      "promptTokens": 1386,
+      "totalTokens": 1531
+    },
+    "actualModelInputRecorded": true
+  },
+  {
+    "executionId": "26",
+    "workflowId": "live01-wf07",
+    "workflowVersionId": "caf68ca6-48bf-40b4-9fa4-c9a95aa4d77b",
+    "status": "success",
+    "startedAt": "2026-10-26T10:17:24.637Z",
+    "stoppedAt": "2026-10-26T10:17:27.223Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 207,
+      "promptTokens": 1644,
+      "totalTokens": 1851
+    },
+    "actualModelInputRecorded": true
+  },
+  {
+    "executionId": "25",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+    "status": "error",
+    "startedAt": "2026-10-26T10:16:49.890Z",
+    "stoppedAt": "2026-10-26T10:16:58.061Z",
+    "lastNode": "Assistent",
+    "error": "Model output doesn't fit required format",
+    "tokenUsage": {
+      "completionTokens": 922,
+      "promptTokens": 1173,
+      "totalTokens": 2095
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "24",
+    "workflowId": "live01-wfa",
+    "workflowVersionId": "2926ba4b-fe34-4483-aad7-a84136805079",
+    "status": "success",
+    "startedAt": "2026-10-26T10:15:09.876Z",
+    "stoppedAt": "2026-10-26T10:15:10.182Z",
+    "lastNode": "Return Response",
+    "actualModelInputRecorded": false
+  },
+  {
+    "executionId": "23",
+    "workflowId": "live01-wfa",
+    "workflowVersionId": "2926ba4b-fe34-4483-aad7-a84136805079",
+    "status": "success",
+    "startedAt": "2026-10-26T10:14:53.550Z",
+    "stoppedAt": "2026-10-26T10:14:54.044Z",
+    "lastNode": "Return Response",
+    "actualModelInputRecorded": false
+  },
+  {
+    "executionId": "22",
+    "workflowId": "live01-wf07",
+    "workflowVersionId": "fe280316-f713-40e0-b2a9-5d66f766672d",
+    "status": "success",
+    "startedAt": "2026-10-26T10:12:54.938Z",
+    "stoppedAt": "2026-10-26T10:12:56.975Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 158,
+      "promptTokens": 1349,
+      "totalTokens": 1507
+    },
+    "actualModelInputRecorded": true
+  },
+  {
+    "executionId": "21",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+    "status": "success",
+    "startedAt": "2026-10-26T10:12:38.100Z",
+    "stoppedAt": "2026-10-26T10:12:39.491Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 51,
+      "promptTokens": 583,
+      "totalTokens": 634
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "20",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+    "status": "success",
+    "startedAt": "2026-10-26T10:12:36.746Z",
+    "stoppedAt": "2026-10-26T10:12:38.010Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 49,
+      "promptTokens": 583,
+      "totalTokens": 632
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "19",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+    "status": "success",
+    "startedAt": "2026-10-26T10:12:35.200Z",
+    "stoppedAt": "2026-10-26T10:12:36.715Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 82,
+      "promptTokens": 586,
+      "totalTokens": 668
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "18",
+    "workflowId": "live01-wf07",
+    "workflowVersionId": "fe280316-f713-40e0-b2a9-5d66f766672d",
+    "status": "success",
+    "startedAt": "2026-10-26T10:12:32.951Z",
+    "stoppedAt": "2026-10-26T10:12:35.075Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 171,
+      "promptTokens": 1337,
+      "totalTokens": 1508
+    },
+    "actualModelInputRecorded": true
+  },
+  {
+    "executionId": "17",
+    "workflowId": "live01-wf07",
+    "workflowVersionId": "fe280316-f713-40e0-b2a9-5d66f766672d",
+    "status": "success",
+    "startedAt": "2026-10-26T10:12:31.214Z",
+    "stoppedAt": "2026-10-26T10:12:32.910Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 140,
+      "promptTokens": 1346,
+      "totalTokens": 1486
+    },
+    "actualModelInputRecorded": true
+  },
+  {
+    "executionId": "16",
+    "workflowId": "live01-wf07",
+    "workflowVersionId": "fe280316-f713-40e0-b2a9-5d66f766672d",
+    "status": "success",
+    "startedAt": "2026-10-26T10:12:27.979Z",
+    "stoppedAt": "2026-10-26T10:12:31.172Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 257,
+      "promptTokens": 1604,
+      "totalTokens": 1861
+    },
+    "actualModelInputRecorded": true
+  },
+  {
+    "executionId": "15",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+    "status": "success",
+    "startedAt": "2026-10-26T10:09:42.813Z",
+    "stoppedAt": "2026-10-26T10:09:44.260Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 51,
+      "promptTokens": 583,
+      "totalTokens": 634
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "14",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+    "status": "success",
+    "startedAt": "2026-10-26T10:09:41.494Z",
+    "stoppedAt": "2026-10-26T10:09:42.698Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 49,
+      "promptTokens": 583,
+      "totalTokens": 632
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "13",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+    "status": "success",
+    "startedAt": "2026-10-26T10:09:39.747Z",
+    "stoppedAt": "2026-10-26T10:09:41.463Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 82,
+      "promptTokens": 586,
+      "totalTokens": 668
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "12",
+    "workflowId": "live01-wf07",
+    "workflowVersionId": "6269daf7-479d-4ef8-b8ec-ec0c09d88f68",
+    "status": "success",
+    "startedAt": "2026-10-26T10:09:37.173Z",
+    "stoppedAt": "2026-10-26T10:09:39.656Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 144,
+      "promptTokens": 1280,
+      "totalTokens": 1424
+    },
+    "actualModelInputRecorded": true
+  },
+  {
+    "executionId": "11",
+    "workflowId": "live01-wf07",
+    "workflowVersionId": "6269daf7-479d-4ef8-b8ec-ec0c09d88f68",
+    "status": "success",
+    "startedAt": "2026-10-26T10:09:34.710Z",
+    "stoppedAt": "2026-10-26T10:09:37.108Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 145,
+      "promptTokens": 1289,
+      "totalTokens": 1434
+    },
+    "actualModelInputRecorded": true
+  },
+  {
+    "executionId": "10",
+    "workflowId": "live01-wf07",
+    "workflowVersionId": "6269daf7-479d-4ef8-b8ec-ec0c09d88f68",
+    "status": "success",
+    "startedAt": "2026-10-26T10:09:31.810Z",
+    "stoppedAt": "2026-10-26T10:09:34.639Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 243,
+      "promptTokens": 1547,
+      "totalTokens": 1790
+    },
+    "actualModelInputRecorded": true
+  },
+  {
+    "executionId": "9",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+    "status": "success",
+    "startedAt": "2026-10-26T10:05:38.216Z",
+    "stoppedAt": "2026-10-26T10:05:39.664Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 51,
+      "promptTokens": 583,
+      "totalTokens": 634
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "8",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+    "status": "success",
+    "startedAt": "2026-10-26T10:05:36.992Z",
+    "stoppedAt": "2026-10-26T10:05:38.153Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 49,
+      "promptTokens": 583,
+      "totalTokens": 632
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "7",
+    "workflowId": "live01-wf08",
+    "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+    "status": "success",
+    "startedAt": "2026-10-26T10:05:35.546Z",
+    "stoppedAt": "2026-10-26T10:05:36.906Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 82,
+      "promptTokens": 586,
+      "totalTokens": 668
+    },
+    "actualModelInputRecorded": true,
+    "directPIIDetected": false,
+    "rawQuestionReducedLocally": true
+  },
+  {
+    "executionId": "6",
+    "workflowId": "live01-wf07",
+    "workflowVersionId": "93f35642-77e5-418b-a981-3d9166281573",
+    "status": "error",
+    "startedAt": "2026-10-26T10:05:31.804Z",
+    "stoppedAt": "2026-10-26T10:05:35.503Z",
+    "lastNode": "KI Extraktor",
+    "error": "Model output doesn't fit required format",
+    "tokenUsage": {
+      "completionTokens": 312,
+      "promptTokens": 749,
+      "totalTokens": 1061
+    },
+    "actualModelInputRecorded": true
+  },
+  {
+    "executionId": "5",
+    "workflowId": "live01-wf07",
+    "workflowVersionId": "93f35642-77e5-418b-a981-3d9166281573",
+    "status": "error",
+    "startedAt": "2026-10-26T10:05:27.694Z",
+    "stoppedAt": "2026-10-26T10:05:31.735Z",
+    "lastNode": "KI Extraktor",
+    "error": "Model output doesn't fit required format",
+    "tokenUsage": {
+      "completionTokens": 375,
+      "promptTokens": 758,
+      "totalTokens": 1133
+    },
+    "actualModelInputRecorded": true
+  },
+  {
+    "executionId": "4",
+    "workflowId": "live01-wf07",
+    "workflowVersionId": "93f35642-77e5-418b-a981-3d9166281573",
+    "status": "success",
+    "startedAt": "2026-10-26T10:05:18.118Z",
+    "stoppedAt": "2026-10-26T10:05:27.612Z",
+    "lastNode": "Antwort senden",
+    "tokenUsage": {
+      "completionTokens": 1270,
+      "promptTokens": 1016,
+      "totalTokens": 2286
+    },
+    "actualModelInputRecorded": true
+  },
+  {
+    "executionId": "3",
+    "workflowId": "live01-wf07",
+    "workflowVersionId": "93f35642-77e5-418b-a981-3d9166281573",
+    "status": "error",
+    "startedAt": "2026-10-26T10:03:59.248Z",
+    "stoppedAt": "2026-10-26T10:04:02.383Z",
+    "lastNode": "KI Extraktor",
+    "error": "Model output doesn't fit required format",
+    "tokenUsage": {
+      "completionTokens": 306,
+      "promptTokens": 740,
+      "totalTokens": 1046
+    },
+    "actualModelInputRecorded": true
+  }
+]

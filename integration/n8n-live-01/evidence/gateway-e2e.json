@@ -1,0 +1,173 @@
+{
+  "checks": [
+    {
+      "name": "UI lost receipt + retry sent identical body and submission ID; real n8n 201 then replay 200",
+      "status": "PASS"
+    },
+    {
+      "name": "Dashboard actual SQL contains saved lead after refresh",
+      "status": "PASS"
+    },
+    {
+      "name": "Actual WF-D returns pending/unscored, never fake delivered",
+      "status": "PASS"
+    },
+    {
+      "name": "Actual Gateway -> WF08 -> scoped PG -> real OpenAI queries the saved lead",
+      "status": "PASS"
+    },
+    {
+      "name": "Concurrent identical captures: one 201, one 200 replay, exactly one PG row",
+      "status": "PASS"
+    },
+    {
+      "name": "Changed body with same submission ID returns 409 and preserves original row",
+      "status": "PASS"
+    },
+    {
+      "name": "Invalid email returns actual WF-A 422 details, no persistence",
+      "status": "PASS"
+    },
+    {
+      "name": "Unknown context fails closed; duplicate IDs reject before upstream; absent session denied",
+      "status": "PASS"
+    },
+    {
+      "name": "Scoped credential has no table SELECT or CRM write; real context contains only requested ID",
+      "status": "PASS"
+    },
+    {
+      "name": "Actual WF08 LLM inputs contain categories/IDs, no direct PII/raw user question",
+      "status": "PASS"
+    },
+    {
+      "name": "No outbox messages, no scores fabricated",
+      "status": "PASS"
+    }
+  ],
+  "results": {
+    "uiLead": {
+      "lead_id": "FAIR-dca39b6f-76f0-467b-974d-c2cb4109d090",
+      "submission_id": "ai-58e26b5d-765a-4ba5-977a-e5b3c48e759b"
+    },
+    "uiTransport": [
+      {
+        "at": "2026-10-26T10:14:54.048Z",
+        "path": "/webhook/trade-fair/lead",
+        "http": 201,
+        "bodySha256": "f2926216d33d988387441ca33437e166bb44c055059711b7a20c3517b82cf108",
+        "submissionId": "ai-58e26b5d-765a-4ba5-977a-e5b3c48e759b",
+        "droppedReceipt": true
+      },
+      {
+        "at": "2026-10-26T10:15:10.185Z",
+        "path": "/webhook/trade-fair/lead",
+        "http": 200,
+        "bodySha256": "f2926216d33d988387441ca33437e166bb44c055059711b7a20c3517b82cf108",
+        "submissionId": "ai-58e26b5d-765a-4ba5-977a-e5b3c48e759b"
+      }
+    ],
+    "dashboardVisible": true,
+    "status": {
+      "http": 200,
+      "body": {
+        "success": true,
+        "lead_id": "FAIR-dca39b6f-76f0-467b-974d-c2cb4109d090",
+        "processing_status": "pending",
+        "processing_attempts": 0,
+        "next_retry_at": "2026-10-26T10:14:54.015847+00:00",
+        "last_error_code": null,
+        "review_required": false,
+        "score_band": null,
+        "score_total": null,
+        "email_status": null,
+        "email_next_retry_at": null,
+        "updated_at": "2026-10-26T10:14:54.015847+00:00"
+      }
+    },
+    "savedLeadAsk": {
+      "http": 200,
+      "body": {
+        "success": true,
+        "answer": "FAIR-dca39b6f-76f0-467b-974d-c2cb4109d090: Kategorie = unbekannt\nFAIR-dca39b6f-76f0-467b-974d-c2cb4109d090: Score = unbekannt\nFAIR-dca39b6f-76f0-467b-974d-c2cb4109d090: Budget = approved",
+        "cited_lead_ids": [
+          "FAIR-dca39b6f-76f0-467b-974d-c2cb4109d090"
+        ],
+        "tokens": null,
+        "as_of": "2026-10-26T10:20:04.783Z"
+      }
+    },
+    "concurrent": {
+      "submission_id": "live01-2124c52f-0c4b-4837-b1be-bdf1049a4aaf",
+      "responses": [
+        {
+          "http": 201,
+          "body": {
+            "success": true,
+            "persisted": true,
+            "lead_id": "FAIR-e021a436-06f9-4088-99c3-3b89b607d924",
+            "status": "NEW",
+            "message": "Lead received successfully",
+            "processing_status": "pending",
+            "idempotent_replay": false,
+            "review_required": false
+          }
+        },
+        {
+          "http": 200,
+          "body": {
+            "success": true,
+            "persisted": true,
+            "lead_id": "FAIR-e021a436-06f9-4088-99c3-3b89b607d924",
+            "status": "NEW",
+            "message": "Lead received successfully",
+            "processing_status": "pending",
+            "idempotent_replay": true,
+            "review_required": false
+          }
+        }
+      ],
+      "rows": 1
+    },
+    "conflict": {
+      "http": 409,
+      "body": {
+        "success": false,
+        "error": {
+          "code": "IDEMPOTENCY_CONFLICT",
+          "message": "This submission_id was already used for different content.",
+          "details": []
+        },
+        "retryable": false,
+        "persistence_status": "not_stored"
+      }
+    },
+    "validation": {
+      "http": 422,
+      "body": {
+        "success": false,
+        "error": {
+          "code": "VALIDATION_FAILED",
+          "message": "Correct the indicated fields and submit again.",
+          "details": [
+            {
+              "field": "email",
+              "code": "INVALID_EMAIL",
+              "message": "Check this field."
+            }
+          ]
+        },
+        "retryable": false,
+        "persistence_status": "not_stored"
+      }
+    },
+    "negative": {
+      "unknownContext": 503,
+      "duplicateContext": 422,
+      "anonymous": 401
+    },
+    "wf08ModelInputsChecked": 6,
+    "outboxRows": 0,
+    "processingRows": 0
+  }
+}
