@@ -138,30 +138,184 @@ async function load() {
 
 // ---------- Lead details drawer ----------
 const safeUrlDisplay = (v) => { try { const u = new URL(v); return ['http:', 'https:'].includes(u.protocol) ? u.href : null; } catch { return null; } };
+
+// Enum → readable German dictionaries. Unknown values fall back to the raw string
+// so new backend enums are visible, never silently dropped.
+const DE_TRAINING = { leadership: 'Führung', communication: 'Kommunikation', sales: 'Vertrieb', project_management: 'Projektmanagement', digital_skills: 'Digitale Kompetenzen', ai_automation: 'KI & Automatisierung', other: 'Sonstiges' };
+const DE_BUDGET = { approved: 'Freigegeben', planned: 'Geplant', unknown: 'Unbekannt', not_disclosed: 'Nicht genannt', no_budget: 'Kein Budget' };
+const DE_FOLLOW = { within_one_week: 'Innerhalb einer Woche', within_two_weeks: 'Innerhalb von zwei Wochen', within_one_month: 'Innerhalb eines Monats', on_date: 'An festem Datum', no_follow_up: 'Kein Follow-up', not_decided: 'Noch offen' };
+const DE_UNCERT_FLAG = { email_missing: 'E-Mail-Adresse fehlt', phone_missing: 'Telefonnummer fehlt', ambiguous_training: 'Trainingswunsch mehrdeutig', ambiguous_budget: 'Budgetstatus mehrdeutig', low_confidence: 'Niedrige KI-Konfidenz', unclear_notes: 'Notizen unklar' };
+const DE_FIELD = { company_name: 'Firmenname', contact_name: 'Name', email: 'E-Mail', phone: 'Telefon', website: 'Website', training_interest: 'Trainingswunsch', budget_status: 'Budget', follow_up: 'Follow-up', follow_up_date: 'Follow-up-Datum', notes: 'Notizen', summary: 'Zusammenfassung', confidence: 'Konfidenz' };
+const DE_RESEARCH = { name: 'Firmenname', industry: 'Branche', size: 'Grösse', employees: 'Mitarbeitende', founded: 'Gegründet', revenue: 'Umsatz', website: 'Website', country: 'Land', city: 'Stadt', region: 'Region', description: 'Beschreibung', summary: 'Zusammenfassung', hq: 'Hauptsitz', legal_form: 'Rechtsform', vat_id: 'USt-IdNr.' };
+
+function labelize(dict, v) { return v == null || v === '' ? '–' : (dict[v] || String(v)); }
+function fieldLabel(k) { return DE_FIELD[k] || DE_RESEARCH[k] || k; }
+
+function kvRow(dl, label, value) {
+  dl.appendChild(elem('dt', null, label));
+  dl.appendChild(elem('dd', null, value == null || value === '' ? '–' : String(value)));
+}
+
+function websiteDd(url) {
+  const web = safeUrlDisplay(url);
+  const dd = document.createElement('dd');
+  if (!web) { dd.appendChild(document.createTextNode(url == null || url === '' ? '–' : String(url))); return dd; }
+  const a = document.createElement('a'); a.target = '_blank'; a.rel = 'noopener noreferrer'; a.href = web;
+  a.appendChild(document.createTextNode(web)); dd.appendChild(a); return dd;
+}
+
+function renderConfidence(conf) {
+  if (!conf || typeof conf !== 'object' || Array.isArray(conf)) return null;
+  const entries = Object.entries(conf).filter(([, v]) => typeof v === 'number' && Number.isFinite(v));
+  if (!entries.length) return null;
+  const dl = elem('dl', 'kv');
+  for (const [k, v] of entries) kvRow(dl, fieldLabel(k), Math.max(0, Math.min(100, Math.round(v * 100))) + ' %');
+  return dl;
+}
+
+function technicalDetails(label, value) {
+  // Preserve information we don't yet know how to label without rendering raw HTML.
+  const det = document.createElement('details'); det.className = 'tech-details';
+  det.appendChild(elem('summary', null, label || 'Technische Details anzeigen'));
+  det.appendChild(elem('pre', 'detailJson', JSON.stringify(value, null, 2)));
+  return det;
+}
+
+function renderUncertaintyPanel(l) {
+  const flags = Array.isArray(l.uncertainty_flags) ? l.uncertainty_flags.filter((x) => x != null) : [];
+  const possible = Array.isArray(l.possible_contact_ids) ? l.possible_contact_ids.filter((x) => x != null) : [];
+  const aiU = l.ai_uncertainty && typeof l.ai_uncertainty === 'object' && !Array.isArray(l.ai_uncertainty) ? l.ai_uncertainty : null;
+  const aiUEntries = aiU ? Object.entries(aiU).filter(([, v]) => v != null && v !== '') : [];
+  const box = elem('div');
+  if (!flags.length && !possible.length && !aiUEntries.length) {
+    box.appendChild(elem('p', 'muted', 'Keine zusätzlichen Hinweise vorhanden.'));
+    return box;
+  }
+  if (flags.length) {
+    box.appendChild(elem('h4', null, 'Hinweise'));
+    const ul = document.createElement('ul'); ul.className = 'hint-list';
+    for (const f of flags) ul.appendChild(elem('li', null, labelize(DE_UNCERT_FLAG, f)));
+    box.appendChild(ul);
+  }
+  if (possible.length) {
+    box.appendChild(elem('h4', null, `Mögliche Duplikat-Kontakte (${possible.length})`));
+    const ul = document.createElement('ul'); ul.className = 'hint-list';
+    for (const id of possible) ul.appendChild(elem('li', 'mono', String(id)));
+    box.appendChild(ul);
+  }
+  if (aiU === null) {
+    // Only emit this phrasing when the panel still has non-AI hints to show.
+    if (flags.length || possible.length) box.appendChild(elem('p', 'muted', 'Keine KI-Bewertung vorhanden.'));
+  } else if (aiUEntries.length) {
+    box.appendChild(elem('h4', null, 'KI-Konfidenz je Feld'));
+    const dl = elem('dl', 'kv');
+    for (const [field, reason] of aiUEntries) {
+      const value = typeof reason === 'number' && Number.isFinite(reason)
+        ? Math.max(0, Math.min(100, Math.round(reason * 100))) + ' %'
+        : String(reason);
+      kvRow(dl, fieldLabel(field), value);
+    }
+    box.appendChild(dl);
+  }
+  return box;
+}
+
+function renderAiExtractionPanel(l) {
+  const data = l.ai_extraction;
+  if (data == null) return elem('p', 'muted', 'Keine KI-Bewertung vorhanden.');
+  if (typeof data !== 'object' || Array.isArray(data)) {
+    const box = elem('div');
+    box.appendChild(elem('p', 'muted', 'Keine KI-Bewertung vorhanden.'));
+    box.appendChild(technicalDetails('Unbekanntes Format anzeigen', data));
+    return box;
+  }
+  const known = ['company_name', 'contact_name', 'email', 'phone', 'website', 'training_interest', 'budget_status', 'follow_up', 'follow_up_date', 'notes', 'summary'];
+  const box = elem('div');
+  const dl = elem('dl', 'kv'); let used = 0;
+  for (const k of known) {
+    const v = data[k];
+    if (v == null || v === '') continue;
+    used++;
+    dl.appendChild(elem('dt', null, DE_FIELD[k] || k));
+    if (k === 'website') dl.appendChild(websiteDd(v));
+    else if (k === 'training_interest') dl.appendChild(elem('dd', null, labelize(DE_TRAINING, v)));
+    else if (k === 'budget_status') dl.appendChild(elem('dd', null, labelize(DE_BUDGET, v)));
+    else if (k === 'follow_up') dl.appendChild(elem('dd', null, labelize(DE_FOLLOW, v)));
+    else if (k === 'notes' || k === 'summary') { const dd = document.createElement('dd'); dd.appendChild(elem('span', 'notiz-inline', String(v))); dl.appendChild(dd); }
+    else dl.appendChild(elem('dd', null, String(v)));
+  }
+  if (used) box.appendChild(dl);
+  const confDl = renderConfidence(data.confidence);
+  if (confDl) { box.appendChild(elem('h4', null, 'Konfidenz')); box.appendChild(confDl); }
+  const extra = Object.keys(data).filter((k) => !known.includes(k) && k !== 'confidence');
+  if (extra.length) {
+    const sub = Object.fromEntries(extra.map((k) => [k, data[k]]));
+    box.appendChild(technicalDetails('Weitere KI-Felder anzeigen', sub));
+  }
+  if (!used && !confDl && !extra.length) {
+    box.appendChild(elem('p', 'muted', 'Keine KI-Bewertung vorhanden.'));
+  }
+  return box;
+}
+
+function renderCompanyResearchPanel(l) {
+  const data = l.company_research;
+  if (data == null) return elem('p', 'muted', 'Keine Firmenrecherche vorhanden.');
+  if (typeof data !== 'object' || Array.isArray(data)) {
+    const box = elem('div');
+    box.appendChild(elem('p', 'muted', 'Keine zusätzlichen Hinweise vorhanden.'));
+    box.appendChild(technicalDetails('Rohdaten anzeigen', data));
+    return box;
+  }
+  const known = Object.keys(DE_RESEARCH);
+  const box = elem('div');
+  const dl = elem('dl', 'kv'); let used = 0;
+  for (const k of known) {
+    const v = data[k];
+    if (v == null || v === '') continue;
+    if (typeof v === 'object') continue; // nested → collapsible below
+    used++;
+    dl.appendChild(elem('dt', null, DE_RESEARCH[k] || k));
+    if (k === 'website') dl.appendChild(websiteDd(v));
+    else dl.appendChild(elem('dd', null, String(v)));
+  }
+  if (used) box.appendChild(dl);
+  const unknownKeys = Object.keys(data).filter((k) => !known.includes(k) || typeof data[k] === 'object');
+  if (unknownKeys.length) {
+    const sub = Object.fromEntries(unknownKeys.map((k) => [k, data[k]]));
+    box.appendChild(technicalDetails('Technische Details anzeigen', sub));
+  }
+  if (!used && !unknownKeys.length) box.appendChild(elem('p', 'muted', 'Keine zusätzlichen Hinweise vorhanden.'));
+  return box;
+}
+
 function showDetail(id) {
   const l = items.find((x) => x.lead_id === id); if (!l) return;
   setText($('dTitle'), l.company || 'Unbekannte Firma'); setText($('dSub'), l.lead_id);
   const msgs = $('msgs'); clear(msgs);
-  const kv = (dl, label, value) => { dl.appendChild(elem('dt', null, label)); dl.appendChild(elem('dd', null, value == null || value === '' ? '–' : String(value))); };
   const panel = (title) => { const p = elem('div', 'panel'); p.appendChild(elem('h3', null, title)); return p; };
   const p1 = panel('Score und Zustellung'); const dl1 = elem('dl', 'kv');
-  kv(dl1, 'Score', l.score_total == null ? 'Nicht bewertet' : l.score_total + '/100');
-  kv(dl1, 'Kategorie', l.score_band); kv(dl1, 'Verarbeitung', l.processing_status); kv(dl1, 'Fehler', l.processing_error);
-  kv(dl1, 'E-Mail', l.email_status); kv(dl1, 'E-Mail-Fehler', l.email_error); kv(dl1, 'Versuche', l.processing_attempts);
+  kvRow(dl1, 'Score', l.score_total == null ? 'Nicht bewertet' : l.score_total + '/100');
+  kvRow(dl1, 'Kategorie', l.score_band); kvRow(dl1, 'Verarbeitung', l.processing_status); kvRow(dl1, 'Fehler', l.processing_error);
+  kvRow(dl1, 'E-Mail', l.email_status); kvRow(dl1, 'E-Mail-Fehler', l.email_error); kvRow(dl1, 'Versuche', l.processing_attempts);
   p1.appendChild(dl1); msgs.appendChild(p1);
   const p2 = panel('Kontakt'); const dl2 = elem('dl', 'kv');
-  kv(dl2, 'Firma', l.company); kv(dl2, 'Name', l.contact); kv(dl2, 'E-Mail', l.email); kv(dl2, 'Telefon', l.phone);
-  kv(dl2, 'E-Mail bestätigt', l.email_verified ? 'Ja' : 'Nein');
+  kvRow(dl2, 'Firma', l.company); kvRow(dl2, 'Name', l.contact); kvRow(dl2, 'E-Mail', l.email); kvRow(dl2, 'Telefon', l.phone);
+  kvRow(dl2, 'E-Mail bestätigt', l.email_verified ? 'Ja' : 'Nein');
   const web = safeUrlDisplay(l.website);
-  if (web) { dl2.appendChild(elem('dt', null, 'Website')); const dd = document.createElement('dd'); const a = document.createElement('a'); a.target = '_blank'; a.rel = 'noopener noreferrer'; a.href = web; a.appendChild(document.createTextNode(web)); dd.appendChild(a); dl2.appendChild(dd); }
-  kv(dl2, 'Erfasst', dateDE(l.created_at)); p2.appendChild(dl2); msgs.appendChild(p2);
+  if (web) { dl2.appendChild(elem('dt', null, 'Website')); dl2.appendChild(websiteDd(l.website)); }
+  kvRow(dl2, 'Erfasst', dateDE(l.created_at)); p2.appendChild(dl2); msgs.appendChild(p2);
   const p3 = panel('Angaben'); const dl3 = elem('dl', 'kv');
-  kv(dl3, 'Training', l.training_interest); kv(dl3, 'Budget', l.budget_status); kv(dl3, 'Follow-up', l.follow_up); kv(dl3, 'Datum', l.follow_up_date);
-  kv(dl3, 'Duplikat', l.duplicate_status); kv(dl3, 'Prüfung nötig', l.review_required ? 'Ja' : 'Nein'); p3.appendChild(dl3); msgs.appendChild(p3);
+  kvRow(dl3, 'Trainingswunsch', labelize(DE_TRAINING, l.training_interest));
+  kvRow(dl3, 'Budget', labelize(DE_BUDGET, l.budget_status));
+  kvRow(dl3, 'Follow-up', labelize(DE_FOLLOW, l.follow_up));
+  kvRow(dl3, 'Follow-up-Datum', l.follow_up_date);
+  kvRow(dl3, 'Duplikat', l.duplicate_status); kvRow(dl3, 'Prüfung nötig', l.review_required ? 'Ja' : 'Nein');
+  p3.appendChild(dl3); msgs.appendChild(p3);
   const p4 = panel('Notizen'); p4.appendChild(elem('pre', 'notiz', l.notes == null ? '–' : String(l.notes))); msgs.appendChild(p4);
-  const p5 = panel('Unsicherheiten / Duplikat-Hinweise'); p5.appendChild(elem('pre', 'detailJson', JSON.stringify({ flags: l.uncertainty_flags, possible_contact_ids: l.possible_contact_ids, ai_uncertainty: l.ai_uncertainty }, null, 2))); msgs.appendChild(p5);
-  const p6 = panel('KI-Auswertung'); p6.appendChild(elem('pre', 'detailJson', l.ai_extraction ? JSON.stringify(l.ai_extraction, null, 2) : 'Nicht vorhanden / noch nicht verarbeitet')); msgs.appendChild(p6);
-  const p7 = panel('Firmenrecherche'); p7.appendChild(elem('pre', 'detailJson', l.company_research ? JSON.stringify(l.company_research, null, 2) : 'Nicht vorhanden / noch nicht verarbeitet')); msgs.appendChild(p7);
+  const p5 = panel('Unsicherheiten / Duplikat-Hinweise'); p5.appendChild(renderUncertaintyPanel(l)); msgs.appendChild(p5);
+  const p6 = panel('KI-Auswertung'); p6.appendChild(renderAiExtractionPanel(l)); msgs.appendChild(p6);
+  const p7 = panel('Firmenrecherche'); p7.appendChild(renderCompanyResearchPanel(l)); msgs.appendChild(p7);
   $('drawer').classList.add('open'); $('backdrop').classList.add('open'); $('drawer').setAttribute('aria-hidden', 'false');
 }
 const closeDrawer = () => { $('drawer').classList.remove('open'); $('backdrop').classList.remove('open'); $('drawer').setAttribute('aria-hidden', 'true'); };
@@ -481,3 +635,7 @@ $('aiAskInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e
 document.querySelectorAll('.nav[data-go]').forEach((b) => b.addEventListener('click', () => $(b.dataset.go).scrollIntoView({ behavior: 'smooth' })));
 
 detectSession().then(load);
+
+// Narrow test hook: UI regression tests inject a synthetic lead and open the
+// drawer. Never used by product code, never exposes shared mutable state.
+if (typeof window !== 'undefined') window.__wbsRenderLeadDetail = (lead) => { items = [lead]; showDetail(lead.lead_id); };
