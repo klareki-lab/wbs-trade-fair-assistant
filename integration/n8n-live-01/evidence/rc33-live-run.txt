@@ -1,0 +1,11 @@
+[rc33-real] starting disposable PG + n8n 2.41.7
+[rc33-real] importing + activating canonical WF-07
+PASS — canonical WF-07 published → ACCEPT (publishedVersionId=719e588a-5463-4108-9c71-84a87043b5a7)
+[rc33-real] importing + activating canonical WF-08
+PASS — canonical WF-08 published → ACCEPT (publishedVersionId=760d31c0-4c66-4123-bca1-689916210696)
+[rc33-real] mutating WF-08: Ausgabe prüfen.disabled=true, republish
+PASS — WF-08 Ausgabe prüfen.disabled=true published → REJECT
+    rejection reason: PUBLISHED_PROVENANCE_FAILED: published node Ausgabe prüfen executable fingerprint diverges from canonical (fields: disabled).
+  diff: {"disabled":{"canonical":false,"published":true}}
+
+RC3.3 real n8n executable-provenance acceptance: ALL CHECKS PASS

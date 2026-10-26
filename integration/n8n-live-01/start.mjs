@@ -5,11 +5,16 @@ import {readFile,writeFile,mkdir,chmod,mkdtemp,unlink} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {randomBytes,randomUUID,createHash} from 'node:crypto';
-import {adaptWorkflow} from './adapt-workflows.mjs';
+import assert from 'node:assert/strict';
 import {startPg16} from '../../tests/helpers/pg16.mjs';
 const exec=promisify(rawExec);
 const root=resolve(new URL('../../',import.meta.url).pathname);
 const here=resolve(new URL('./',import.meta.url).pathname);
+// Record the exact checked-out source revision; never reuse the historical RC1 SHA.
+const sourceSha=(await exec('git',['rev-parse','HEAD'],{cwd:root})).stdout.trim();
+assert.match(sourceSha,/^[0-9a-f]{40}$/);
+const trackedChanges=(await exec('git',['status','--porcelain','--untracked-files=no'],{cwd:root})).stdout;
+assert.equal(trackedChanges.trim(),'','Bootstrap must use committed canonical workflow parameters');
 const stateFile=join(here,'.runtime/state.json');
 try {
  const existing=JSON.parse(await readFile(stateFile,'utf8'));
@@ -61,6 +66,7 @@ for(const [file,id,label] of [
  ['workflows/wf-d-lead-status.json','live01-wfd','LIVE01 WF-D synthetic status'],
 ]){
  let wf=JSON.parse(await readFile(join(root,file),'utf8'));if(Array.isArray(wf))wf=wf[0];
+ const canonicalParameters=new Map(wf.nodes.map(n=>[n.id,structuredClone(n.parameters)]));
  wf.id=id;wf.name=label;wf.active=false;delete wf.versionId;delete wf.activeVersionId;delete wf.triggerCount;
  wf.pinData={};wf.staticData=null;
  for(const n of wf.nodes){
@@ -69,7 +75,9 @@ for(const [file,id,label] of [
   if(n.credentials?.openAiApi)n.credentials.openAiApi={id:'live01-openai',name:'LIVE01 Owner staging OpenAI'};
   if(n.credentials?.postgres)n.credentials.postgres={id:['live01-wfa','live01-wfd'].includes(id)?'live01-capture':'live01-pg',name:['live01-wfa','live01-wfd'].includes(id)?'LIVE01 synthetic capture only':'LIVE01 scoped AI context'};
  }
- workflows.push(adaptWorkflow(wf));
+ // No adaptation here: import the exact committed node parameters.
+ for(const n of wf.nodes)assert.deepEqual(n.parameters,canonicalParameters.get(n.id),'Canonical workflow parameters changed during bootstrap: '+n.name);
+ workflows.push(wf);
 }
 await writeFile(join(priv,'credentials.json'),JSON.stringify(creds),{mode:0o600});
 await writeFile(join(priv,'workflows.json'),JSON.stringify(workflows),{mode:0o600});
@@ -93,7 +101,7 @@ for(let i=0;i<100;i++){
 }
 const setup=await fetch(`http://127.0.0.1:${port}/rest/owner/setup`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'n8n-live-01@example.test',firstName:'Isolated',lastName:'LIVE01',password:'IsolatedLive01Only!2026'})});
 if(!setup.ok)throw Error('Isolated owner setup failed HTTP '+setup.status);
-const state={sourceSha:'6b64f70d340c1bd9fcdefdfadcd27c35d566fd30',priv,container:name,port,dbContainer:db.name,pgPort:db.port,header,captureFunctionSha256:createHash('sha256').update(capture).digest('hex'),workflowIds:workflows.map(w=>w.id)};
+const state={sourceSha,priv,container:name,port,dbContainer:db.name,pgPort:db.port,header,captureFunctionSha256:createHash('sha256').update(capture).digest('hex'),workflowIds:workflows.map(w=>w.id)};
 await writeFile(join(runtime,'state.json'),JSON.stringify(state,null,2),{mode:0o600});
 // Clear plaintext API credential import immediately; encrypted credential stays in isolated volume.
 await unlink(join(priv,'credentials.json'));
