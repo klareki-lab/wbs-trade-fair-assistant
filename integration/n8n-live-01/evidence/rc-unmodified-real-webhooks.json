@@ -1,0 +1,261 @@
+{
+  "sourceSha": "6b64f70d340c1bd9fcdefdfadcd27c35d566fd30",
+  "versions": [
+    {
+      "id": "live01-wf07",
+      "active": true,
+      "versionId": "93f35642-77e5-418b-a981-3d9166281573",
+      "activeVersionId": "93f35642-77e5-418b-a981-3d9166281573",
+      "webhookIds": [
+        {
+          "name": "Anfrage",
+          "webhookId": "72b1f1a9-ad90-463d-a14c-0585eaad7b83",
+          "path": "messe-hub/ai-extract"
+        }
+      ]
+    },
+    {
+      "id": "live01-wf08",
+      "active": true,
+      "versionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "activeVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "webhookIds": [
+        {
+          "name": "Anfrage",
+          "webhookId": "a07a8314-0ae9-49d6-8b27-14506340328f",
+          "path": "messe-hub/ai-ask"
+        }
+      ]
+    },
+    {
+      "id": "live01-wfa",
+      "active": true,
+      "versionId": "2926ba4b-fe34-4483-aad7-a84136805079",
+      "activeVersionId": "2926ba4b-fe34-4483-aad7-a84136805079",
+      "webhookIds": [
+        {
+          "name": "Webhook Trigger",
+          "webhookId": "f2b6e42b-09d5-4908-8ae6-c808dfe7eb59",
+          "path": "trade-fair/lead"
+        }
+      ]
+    }
+  ],
+  "results": [
+    {
+      "case": "UC-21",
+      "http": 200,
+      "contentType": "application/json; charset=utf-8",
+      "durationMs": 9715,
+      "body": {
+        "success": true,
+        "extracted": {
+          "company_name": "dm-drogerie markt",
+          "contact_name": "Petra Lenz",
+          "email": "lernbegleitung@dm.example",
+          "phone": null,
+          "website": null,
+          "training_interest": null,
+          "budget_status": null,
+          "follow_up": null,
+          "follow_up_date": "06.11.2026",
+          "notes": "Petra Lenz von dm-drogerie markt vor dem ersten Vortrag getroffen. Sie begleitet nach eigener Aussage ein regionales Team, das neue Mitarbeitende in den Märkten einarbeitet. Es geht um das Vorhaben „Lernbegleiter Startklar“, nicht um ein Training für Marktleitungen. Die Lernbegleiter kennen die Abläufe gut, erklären sie aber sehr unterschiedlich. Gewünscht sind kurze Übungen zum Erklären, Feedbackgeben und Prüfen, ob etwas wirklich verstanden wurde.\n\nPetra sprach von 24 Lernbegleitern, aufgeteilt auf zwei Gruppen mit jeweils zwölf Personen. Pro Person seien 750 Euro für das gesamte Programm vorgesehen. Ich habe nicht gefragt, ob die Summe bereits freigegeben oder nur eine Obergrenze ist. Ein Präsenzauftakt und zwei digitale Übungstermine wären passend; Start möglichst im März 2027. Reise- und Raumkosten sollen offenbar separat betrachtet werden.\n\nSie möchte keine langen Theorieblöcke, sondern Beispiele aus dem Arbeitsalltag. Neue Lernbegleiter sollen am Ende eine kurze Anleitung selbst durchführen können. Wir könnten eine gemeinsame Lernstruktur entwickeln und die ersten Übungseinheiten begleiten. Über eine technische Lernplattform haben wir nicht gesprochen.\n\nAls Kontakt gab sie lernbegleitung@dm.example an, ein gemeinsames Postfach ihres Teams. Bitte Petra in der Anrede nennen. Bis 06.11.2026 wünscht sie eine grobe Programmidee mit Kostenrahmen. Wer die Bestellung freigibt, konnte sie nicht abschließend sagen.",
+          "summary": null
+        },
+        "confidence": {},
+        "uncertainty_flags": [
+          "unsupported_training_interest",
+          "unsupported_follow_up",
+          "unsupported_notes",
+          "unsupported_summary"
+        ],
+        "assistant_message": "Jeden Wert prüfen und vor der Übertragung bestätigen."
+      }
+    },
+    {
+      "case": "LIVE01-DE-02",
+      "http": 500,
+      "contentType": "application/json; charset=utf-8",
+      "durationMs": 4148,
+      "body": {
+        "message": "Error in workflow"
+      }
+    },
+    {
+      "case": "LIVE01-DE-03",
+      "http": 500,
+      "contentType": "application/json; charset=utf-8",
+      "durationMs": 3748,
+      "body": {
+        "message": "Error in workflow"
+      }
+    },
+    {
+      "case": "Welchen Score hat der Lead?",
+      "http": 200,
+      "contentType": "application/json; charset=utf-8",
+      "durationMs": 1391,
+      "body": {
+        "success": true,
+        "answer": "FAIR-00000000-0000-4000-8000-000000000001: Kategorie = unbekannt\nFAIR-00000000-0000-4000-8000-000000000001: Score = unbekannt",
+        "cited_lead_ids": [
+          "FAIR-00000000-0000-4000-8000-000000000001"
+        ]
+      }
+    },
+    {
+      "case": "Welches Budget hat der Lead?",
+      "http": 200,
+      "contentType": "application/json; charset=utf-8",
+      "durationMs": 1249,
+      "body": {
+        "success": true,
+        "answer": "FAIR-00000000-0000-4000-8000-000000000001: Budget = planned",
+        "cited_lead_ids": [
+          "FAIR-00000000-0000-4000-8000-000000000001"
+        ]
+      }
+    },
+    {
+      "case": "Welche Trainingsinteressen hat der Lead?",
+      "http": 200,
+      "contentType": "application/json; charset=utf-8",
+      "durationMs": 1509,
+      "body": {
+        "success": true,
+        "answer": "FAIR-00000000-0000-4000-8000-000000000001: Trainingsinteresse = ai_automation",
+        "cited_lead_ids": [
+          "FAIR-00000000-0000-4000-8000-000000000001"
+        ]
+      }
+    },
+    {
+      "case": "ai-extract no auth",
+      "http": 403,
+      "contentType": null,
+      "durationMs": 33,
+      "body": {
+        "nonJson": true
+      }
+    },
+    {
+      "case": "ai-ask no auth",
+      "http": 403,
+      "contentType": null,
+      "durationMs": 76,
+      "body": {
+        "nonJson": true
+      }
+    }
+  ],
+  "executions": [
+    {
+      "id": "9",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:05:38.216Z",
+      "stoppedAt": "2026-10-26T10:05:39.664Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 51,
+        "promptTokens": 583,
+        "totalTokens": 634
+      }
+    },
+    {
+      "id": "8",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:05:36.992Z",
+      "stoppedAt": "2026-10-26T10:05:38.153Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 49,
+        "promptTokens": 583,
+        "totalTokens": 632
+      }
+    },
+    {
+      "id": "7",
+      "workflowId": "live01-wf08",
+      "workflowVersionId": "b6ee4d6e-81e7-4014-bf89-4782e2f2d698",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:05:35.546Z",
+      "stoppedAt": "2026-10-26T10:05:36.906Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 82,
+        "promptTokens": 586,
+        "totalTokens": 668
+      }
+    },
+    {
+      "id": "6",
+      "workflowId": "live01-wf07",
+      "workflowVersionId": "93f35642-77e5-418b-a981-3d9166281573",
+      "status": "error",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:05:31.804Z",
+      "stoppedAt": "2026-10-26T10:05:35.503Z",
+      "lastNode": "KI Extraktor",
+      "error": "Model output doesn't fit required format",
+      "tokenUsage": {
+        "completionTokens": 312,
+        "promptTokens": 749,
+        "totalTokens": 1061
+      }
+    },
+    {
+      "id": "5",
+      "workflowId": "live01-wf07",
+      "workflowVersionId": "93f35642-77e5-418b-a981-3d9166281573",
+      "status": "error",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:05:27.694Z",
+      "stoppedAt": "2026-10-26T10:05:31.735Z",
+      "lastNode": "KI Extraktor",
+      "error": "Model output doesn't fit required format",
+      "tokenUsage": {
+        "completionTokens": 375,
+        "promptTokens": 758,
+        "totalTokens": 1133
+      }
+    },
+    {
+      "id": "4",
+      "workflowId": "live01-wf07",
+      "workflowVersionId": "93f35642-77e5-418b-a981-3d9166281573",
+      "status": "success",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:05:18.118Z",
+      "stoppedAt": "2026-10-26T10:05:27.612Z",
+      "lastNode": "Antwort senden",
+      "tokenUsage": {
+        "completionTokens": 1270,
+        "promptTokens": 1016,
+        "totalTokens": 2286
+      }
+    },
+    {
+      "id": "3",
+      "workflowId": "live01-wf07",
+      "workflowVersionId": "93f35642-77e5-418b-a981-3d9166281573",
+      "status": "error",
+      "mode": "webhook",
+      "startedAt": "2026-10-26T10:03:59.248Z",
+      "stoppedAt": "2026-10-26T10:04:02.383Z",
+      "lastNode": "KI Extraktor",
+      "error": "Model output doesn't fit required format",
+      "tokenUsage": {
+        "completionTokens": 306,
+        "promptTokens": 740,
+        "totalTokens": 1046
+      }
+    }
+  ]
+}

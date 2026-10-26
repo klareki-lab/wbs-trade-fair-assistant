@@ -1,0 +1,17 @@
+{
+  "observedVia": "CUA Chrome UI",
+  "gateway": "http://127.0.0.1:3117/dashboard",
+  "humanConfirmation": "each populated field confirmed; unconfirmed email prevented submission",
+  "lostReceipt": "UI showed unknown outcome and retained same body/ID",
+  "retry": "actual WF-A idempotent replay, modal closed",
+  "refresh": "saved Integrationswerk LIVE01 lead visible",
+  "filter": "Integrationswerk LIVE01",
+  "savedLeadAsk": {
+    "leadId": "FAIR-dca39b6f-76f0-467b-974d-c2cb4109d090",
+    "score": null,
+    "budget": "approved",
+    "citation": "same saved lead"
+  },
+  "data": "synthetic only",
+  "notProductionAcceptance": true
+}
