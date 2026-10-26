@@ -338,3 +338,12 @@ details.tech-details{margin-top:10px}details.tech-details>summary{cursor:pointer
 .msg-head { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 4px; }
 .msg-body { white-space: pre-wrap; word-wrap: break-word; }
 .msg-cite { margin-top: 6px; font-size: 12px; color: var(--muted); }
+.aiPanel .field.field-invalid > input, .aiPanel .field.field-invalid > select, .aiPanel .field.field-invalid > textarea { border-color: var(--err); background: var(--err-soft); }
+.aiPanel .field-inline-error { margin: 4px 0 0; font-size: 12px; color: var(--err); }
+.aiPanel select { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); font: inherit; width: 100%; box-sizing: border-box; }
+.ai-groups { margin-top: 8px; }
+.ai-groups > summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+.ai-group { margin: 6px 0 10px; }
+.ai-group-head { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.ai-group-ids { margin: 0 0 0 18px; padding: 0; font-size: 12.5px; }
+.ai-group-ids li { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }

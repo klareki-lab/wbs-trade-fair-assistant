@@ -470,25 +470,42 @@ async function aiAnalyze() {
     const panel = $('aiExtractPanel'); panel.hidden = false;
     setText($('aiExtractMeta'), body.assistant_message || '');
     const form = $('aiExtractForm'); clear(form);
+    const EXTRACT_LABEL = { company_name: 'Firmenname', contact_name: 'Name', email: 'E-Mail', phone: 'Telefon', website: 'Website', training_interest: 'Trainingswunsch', budget_status: 'Budget', follow_up: 'Follow-up', follow_up_date: 'Follow-up-Datum', notes: 'Notizen' };
+    const ENUM_OPTIONS = {
+      training_interest: [['leadership','Führung'],['communication','Kommunikation'],['sales','Vertrieb'],['project_management','Projektmanagement'],['digital_skills','Digitale Kompetenzen'],['ai_automation','KI & Automatisierung'],['other','Sonstiges']],
+      budget_status: [['approved','Freigegeben'],['planned','Geplant'],['unknown','Unbekannt'],['not_disclosed','Nicht genannt'],['no_budget','Kein Budget']],
+      follow_up: [['within_one_week','Innerhalb einer Woche'],['within_two_weeks','Innerhalb von zwei Wochen'],['within_one_month','Innerhalb eines Monats'],['on_date','An festem Datum'],['no_follow_up','Kein Follow-up'],['not_decided','Noch offen']],
+    };
     for (const k of EXTRACT_FIELDS) {
       const value = body.extracted[k] ?? '';
       const conf = typeof body.confidence?.[k] === 'number' ? Math.round(body.confidence[k] * 100) : null;
-      const row = elem('div', 'field');
-      const lab = elem('label', null, k + (conf !== null ? ' · Konfidenz ' + conf + '%' : ''));
+      const row = elem('div', 'field'); row.dataset.field = k;
+      const lab = elem('label', null, (EXTRACT_LABEL[k] || k) + (conf !== null ? ' · Konfidenz ' + conf + '%' : ''));
       lab.setAttribute('for', 'aix_' + k);
       row.appendChild(lab);
-      const inp = (k === 'notes' || k === 'summary') ? document.createElement('textarea') : document.createElement('input');
-      if (inp.tagName === 'TEXTAREA') inp.rows = 3;
-      inp.id = 'aix_' + k; inp.name = k; inp.value = value || '';
-      inp.setAttribute('maxlength', CAPTURE_MAX[k]);
+      let inp;
+      if (ENUM_OPTIONS[k]) {
+        inp = document.createElement('select');
+        const opt0 = document.createElement('option'); opt0.value = ''; opt0.textContent = '— bitte auswählen —'; inp.appendChild(opt0);
+        for (const [val, label] of ENUM_OPTIONS[k]) { const o = document.createElement('option'); o.value = val; o.textContent = label; if (val === value) o.selected = true; inp.appendChild(o); }
+      } else {
+        inp = (k === 'notes' || k === 'summary') ? document.createElement('textarea') : document.createElement('input');
+        if (inp.tagName === 'TEXTAREA') inp.rows = 3;
+        inp.value = value || '';
+        inp.setAttribute('maxlength', CAPTURE_MAX[k]);
+      }
+      inp.id = 'aix_' + k; inp.name = k;
       row.appendChild(inp);
       const confirmLabel = elem('label', 'confirm-field'); const confirmed = document.createElement('input'); confirmed.type = 'checkbox'; confirmed.className = 'field-confirm'; confirmed.dataset.field = k;
       confirmed.checked = !value; confirmLabel.appendChild(confirmed); confirmLabel.appendChild(document.createTextNode('Wert geprüft und bestätigt')); row.appendChild(confirmLabel);
-      inp.addEventListener('input', () => { confirmed.checked = !inp.value.trim(); });
+      const fieldErr = elem('p', 'field-inline-error p-err'); fieldErr.hidden = true; fieldErr.dataset.errorFor = k; row.appendChild(fieldErr);
+      const handler = () => { confirmed.checked = !(inp.value || '').toString().trim(); if (!fieldErr.hidden) { fieldErr.hidden = true; row.classList.remove('field-invalid'); } };
+      inp.addEventListener('input', handler); inp.addEventListener('change', handler);
       form.appendChild(row);
     }
     const warnings = $('aiExtractWarnings'); clear(warnings);
-    for (const f of body.uncertainty_flags || []) { warnings.appendChild(elem('li', 'p-warn', f)); }
+    const DE_FLAG = { unsupported_training_interest: 'Trainingswunsch: Bitte Auswahl prüfen.', unsupported_budget_status: 'Budget: Bitte Auswahl prüfen.', unsupported_follow_up: 'Follow-up: Bitte Auswahl prüfen.', unsupported_company_name: 'Firmenname fehlt.', unsupported_contact_name: 'Name fehlt.', unsupported_email: 'E-Mail: Bitte prüfen.', unsupported_phone: 'Telefon: Bitte prüfen.', unsupported_website: 'Website: Bitte prüfen.' };
+    for (const f of body.uncertainty_flags || []) { warnings.appendChild(elem('li', 'p-warn', DE_FLAG[f] || f)); }
     $('aiExtractSubmit').disabled = false;
   } catch (_) { setText(err, 'Verbindungsfehler.'); err.hidden = false; }
   finally { btn.disabled = aiEnabled ? false : true; }
@@ -517,8 +534,26 @@ async function aiSubmit() {
       closeAiExtract(); liveState('Lead übernommen · ' + body.lead_id); load();
     } else if (status === 422 && body.persistence_status === 'not_stored') {
       aiPending = null;
-      for (const el of $('aiExtractForm').querySelectorAll('input,textarea')) el.disabled = false;
-      setText(err, 'Nicht gespeichert: ' + (body.error?.details || []).map((d) => d.field + ': ' + d.code).join(', ')); err.hidden = false;
+      for (const el of $('aiExtractForm').querySelectorAll('input,textarea,select')) el.disabled = false;
+      // Clear previous per-field errors.
+      for (const n of $('aiExtractForm').querySelectorAll('.field-inline-error')) { n.hidden = true; n.textContent = ''; }
+      for (const n of $('aiExtractForm').querySelectorAll('.field')) n.classList.remove('field-invalid');
+      const details = Array.isArray(body.error?.details) ? body.error.details : [];
+      const seen = [];
+      const DE_CODE = { REQUIRED: 'Pflichtfeld', INVALID_VALUE: 'Wert nicht erlaubt', INVALID_EMAIL: 'E-Mail-Format falsch', INVALID_PHONE: 'Telefonnummer-Format falsch', INVALID_WEBSITE: 'Website-URL falsch', INVALID_DATE: 'Datum ungültig', TOO_LONG: 'Zu lang', INVALID_NAME: 'Name ungültig', INVALID_TYPE: 'Falscher Datentyp' };
+      for (const d of details) {
+        const row = $('aiExtractForm').querySelector('[data-field="' + d.field + '"]');
+        if (row) {
+          const node = row.querySelector('.field-inline-error');
+          if (node) { node.textContent = (DE_CODE[d.code] || d.code) + '. Bitte korrigieren.'; node.hidden = false; }
+          row.classList.add('field-invalid');
+          seen.push(d.field);
+        }
+      }
+      const summary = seen.length ? ('Nicht gespeichert. Bitte Felder korrigieren: ' + seen.join(', ')) : 'Nicht gespeichert. Bitte Angaben prüfen.';
+      setText(err, summary); err.hidden = false;
+      // Scroll the first invalid field into view so the Owner sees it immediately.
+      const firstInvalid = $('aiExtractForm').querySelector('.field-invalid'); if (firstInvalid) firstInvalid.scrollIntoView({ block: 'center', behavior: 'smooth' });
     } else {
       setText(err, status === 409 ? 'Übertragungskonflikt. Eingang prüfen lassen; kein neuer Schlüssel und kein weiterer Lead werden erzeugt.' : 'Ergebnis unklar. Erneut senden verwendet exakt dieselben Daten und denselben Schlüssel.'); err.hidden = false;
     }
@@ -546,8 +581,21 @@ async function aiAsk() {
     const { status, body } = await postJson('/api/dashboard/ai/ask', { question: q, context_lead_ids: ctx, session_id: sessionId });
     if (status !== 200 || !body.success) { setText(err, body?.error?.message || 'AI nicht erreichbar.'); err.hidden = false; return; }
     const aiMsg = elem('div', 'msg assistant'); aiMsg.appendChild(elem('div', 'msg-head', 'Lead-Assistent'));
-    aiMsg.appendChild(elem('div', 'msg-body', body.answer));
-    if (Array.isArray(body.cited_lead_ids) && body.cited_lead_ids.length) {
+    // Prefer the proxy's grouped summary when present; fall back to the raw answer.
+    const summary = typeof body.answer_summary === 'string' && body.answer_summary.trim() ? body.answer_summary : body.answer;
+    aiMsg.appendChild(elem('div', 'msg-body', summary));
+    const groups = Array.isArray(body.groups) ? body.groups : [];
+    if (groups.length) {
+      const det = document.createElement('details'); det.className = 'ai-groups'; det.appendChild(elem('summary', null, 'Details anzeigen (' + groups.reduce((n, g) => n + (g.count || 0), 0) + ')'));
+      for (const g of groups) {
+        const row = elem('div', 'ai-group');
+        row.appendChild(elem('div', 'ai-group-head', (g.field_label || g.field) + ' = ' + (g.value == null ? 'unbekannt' : String(g.value)) + '  ·  ' + g.count + ' Lead(s)'));
+        const ul = document.createElement('ul'); ul.className = 'ai-group-ids';
+        for (const id of (g.lead_ids || [])) ul.appendChild(elem('li', 'mono', id));
+        row.appendChild(ul); det.appendChild(row);
+      }
+      aiMsg.appendChild(det);
+    } else if (Array.isArray(body.cited_lead_ids) && body.cited_lead_ids.length) {
       const cite = elem('div', 'msg-cite', 'Zitiert: ');
       for (const id of body.cited_lead_ids) { cite.appendChild(elem('span', 'pill p-n', id.slice(0, 13) + '…')); cite.appendChild(document.createTextNode(' ')); }
       aiMsg.appendChild(cite);

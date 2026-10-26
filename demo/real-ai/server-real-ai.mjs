@@ -95,7 +95,7 @@ const fetchImpl = async (url, init) => {
   if (url.endsWith('/capture')) {
     const normalized = runCode(normalize, { headers: { 'content-type': 'application/json' }, body: payload, _server_candidate_uuid: '99999999-9999-4999-8999-999999999999' });
     const valid = runCode(validate, normalized);
-    if (!valid.valid) return resp(422, { success: false, error: { code: 'VALIDATION_FAILED', details: valid.errors || [] } });
+    if (!valid.valid) { const upstream = valid.response_body || {}; return resp(valid.http_status || 422, { success: false, error: { code: upstream.error?.code || 'VALIDATION_FAILED', message: upstream.error?.message, details: upstream.error?.details || [] }, retryable: !!upstream.retryable, persistence_status: upstream.persistence_status || 'not_stored' }); }
     try { const r = await persistCapture(payload); return resp(r.status, r.body); }
     catch (e) { process.stderr.write('[rc-capture] ' + e.message + '\n'); return resp(503, { success: false, error: { code: 'STORAGE_UNAVAILABLE' } }); }
   }

@@ -163,7 +163,7 @@ const fetchImpl = async (url, init) => {
     CAPTURED.push({ at: new Date().toISOString(), payload });
     const normalized = runCode(normalize, { headers: { 'content-type': 'application/json' }, body: payload, _server_candidate_uuid: '99999999-9999-4999-8999-999999999999' });
     const valid = runCode(validate, normalized);
-    if (!valid.valid) return response(422, { success: false, error: { code: 'VALIDATION_FAILED', details: valid.errors || [] } });
+    if (!valid.valid) { const upstream = valid.response_body || {}; return response(valid.http_status || 422, { success: false, error: { code: upstream.error?.code || 'VALIDATION_FAILED', message: upstream.error?.message, details: upstream.error?.details || [] }, retryable: !!upstream.retryable, persistence_status: upstream.persistence_status || 'not_stored' }); }
     try {
       const { status, body } = await persistCapture(payload);
       return response(status, body);
