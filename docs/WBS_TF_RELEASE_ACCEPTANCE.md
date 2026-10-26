@@ -176,13 +176,27 @@ canonical-draft-over-older-published.
 - Enum coercion rejections, Origin denials, 422 payload details all
   covered by `test_gateway_dashboard` + `workflow_contracts`.
 
-### 3.5 — Scope note on real OpenAI
-The 11-PASS gateway E2E was executed at `6b64f70d…` on 2026-10-26 10:14 UTC
-with the Owner-provided staging key, and remains valid for the RC3.3
-verifier change because the WF-08 Code node (`Ausgabe prüfen`) was
-unchanged in RC3.3; RC3.3 only strengthens the verifier that gates its
-activation. The OpenAI side was not re-exercised today under a new
-budget — judged not required because WF-07/08 content did not change.
+### 3.5 — Scope note on real OpenAI (corrected per Codex RC3.3 finding #6)
+
+The 11-PASS gateway E2E file `gateway-e2e.json` is pinned at
+`6b64f70d…` on 2026-10-26 10:14 UTC. **It is NOT exact-current-canonical
+real-OpenAI acceptance for RC3.3.** Between `6b64f70d…` and RC3.3
+(`3421a5d…`) the WF-08 prompt text, structured-output
+`response_format` and the output-check Code node (`Ausgabe prüfen`)
+all changed as part of R1 (RC3.1) and the Ausgabe-prüfen rewrite that
+RC3.3 locks down. The historical record therefore remains valuable as
+documentation of persistence, idempotency, Origin and scoped-ACL
+behaviour, but any claim that it certifies the exact RC3.3 OpenAI
+prompt behaviour would be unsound.
+
+A bounded-budget real-OpenAI acceptance of the exact RC3.3 canonical
+workflows is a separate Owner-gated step (checklist §G6; packet §6.1).
+This acceptance report records that step as **PENDING**, not as
+pre-existing evidence.
+
+The RC3.3 provenance verifier itself was re-run live against disposable
+n8n 2.41.7 today without invoking any model; see `rc33-live-run.txt` and
+the operator-script dry-run in `rc33-operator-dryrun.txt`.
 
 ## 4. BACKUP & RESTORE — PASS
 
@@ -207,11 +221,25 @@ The `dashboard_snapshot` hash was taken over the deterministic
 `{total, stats, leads}` sub-object; `as_of` (per-call
 `statement_timestamp()`) is intentionally excluded.
 
+**Qualification per Codex RC3.3 finding #7:** this drill uses
+`pg_dump --no-owner --no-privileges`; it does **not** demonstrate
+automatic role/ACL recovery from the dump itself. The drill reapplies
+GRANT statements explicitly from committed SQL after loading, which is
+how the role surfaces on the target. Therefore the drill is a
+**procedure confirmation**, not evidence that role recovery is
+automatic from the dump artefact.
+
+The production procedure in packet §5.1 corrects this by producing
+TWO artefacts: the schema+data dump AND
+`pg_dumpall --roles-only --no-role-passwords` so role definitions and
+grants recover with the data. The real-Neon round-trip of both
+artefacts is an Owner-executed step (checklist §G3) and is not
+included in this acceptance report.
+
 **Not covered by this drill:**
 - A dump of the real production Neon branch into a disposable target.
   That requires Owner-approved temporary access to prod Neon
-  credentials; it is a Phase C step, not a Phase B activity, and does
-  not block NO-GO at this stage.
+  credentials; it is executed under checklist §G3, not here.
 
 ## 5. Scope boundaries — what did NOT run today
 
@@ -234,29 +262,61 @@ Not technical blockers — these are **Owner-gated steps** that the
 report records explicitly so the deployment plan can be executed
 without re-discovery:
 
-1. **Codex independent re-review verdict on `3421a5d`** (R2.1b scope).
-   Status: requested; pending at time of writing.
-2. **Owner-verified Neon production branch identity** per
-   WBS-TF-07 §4 preconditions. The branch ID, endpoint and
-   `neon.timeline_id` must be captured out-of-band to the deployment
-   log.
+1. **Codex independent re-review verdict on `3421a5d`** — **PASS**,
+   CODE READY (recorded on PR #27 comment 6426321107). Codex noted that
+   CODE READY grants no deployment permission; deployment-oriented
+   corrections were separately required and are now consolidated in
+   `docs/WBS_TF_PRODUCTION_EXECUTION_PACKET.md` (P-DEPLOY-02).
+2. **Owner-verified Neon production branch identity** per packet
+   Owner Gate 2.1. Branch ID, endpoint and `neon.timeline_id` captured
+   out-of-band to the deployment log.
 3. **`sql/production/dashboard_role_production.sql` execution** on
-   confirmed production Neon branch (guarded by
+   confirmed production branch (guarded by
    `-v production_branch_confirmed=on`).
 4. **`sql/production/dashboard_crm_v1_up.sql` execution** on confirmed
-   production Neon branch.
-5. **Provision `wbs_tf_ai_context` role on Neon** — schema USAGE +
-   function EXECUTE on `ai_lead_context` only; no table SELECT.
+   production branch. This script itself creates
+   `trade_fair_ai_context` (NOLOGIN) with narrow EXECUTE on
+   `trade_fair.ai_lead_context(jsonb)`.
+5. **Provision LOGIN role `trade_fair_ai_login`** (Owner-chosen name)
+   with `GRANT trade_fair_ai_context TO <login-role>` per packet §2.4.
+   (The earlier `wbs_tf_ai_context` naming has been corrected.)
 6. **Create new n8n credentials** `WBS Trade Fair — OpenAI RC3`
-   (`openAiApi`) and `WBS Trade Fair — AI context` (`postgres`).
-   Deployment plan §3.
-7. **Gateway image rebuild + swap** per F3B R3 §6 "Reversible swap"
-   with the RC3-aware webhook allowlist (deployment plan §5).
-8. **Loopback and external HTTPS acceptance** per F3B R3 §7.
-9. **Finalizer re-run against live production n8n** before activating
-   WF-07/08. Deployment plan §4.4.
-10. **Canary windows T+15m / T+1h / T+24h / T+7d** with the rollback
-    triggers listed in deployment plan §7.
+   (`openAiApi`) and `WBS Trade Fair — AI context` (`postgres`
+   pointing at `trade_fair_ai_login`). Packet §3.1.
+7. **Gateway image rebuild + swap** per F3B R3 §6 "Reversible swap";
+   env file must set `N8N_AI_EXTRACT_URL` and `N8N_AI_ASK_URL`
+   (packet §4.2 — supersedes the earlier
+   `GATEWAY_ALLOW_UPSTREAM_WEBHOOKS` reference).
+8. **Loopback and external HTTPS acceptance** per packet §4.5 and
+   F3B R3 §7.
+9. **Read-only `verify_published_production.mjs` run against live
+   production n8n** before activating end-user traffic. Packet §3.4.
+   (The earlier reference to `finalize.mjs --workflow-ids
+   --mode=production-verify-only` was invalid — those flags do not
+   exist on the pinned finalizer and the finalizer PATCHes settings.)
+10. **Bounded-budget RC3.3 real-OpenAI acceptance** (checklist §G6):
+    first exercise of the exact RC3.3 canonical WF-07/08 against real
+    OpenAI with ≤ $5/day cap.
+11. **Canary windows T+15m / T+1h / T+24h / T+7d** per packet §6.2.
+
+## 6b. Codex RC3.3 CODE verdict (added under P-DEPLOY-02)
+
+**Codex final independent RC3.3 review — PASS — CODE READY** on
+`3421a5d2bb842461c2c12c0f565f53249eeeee05` (comment
+https://github.com/klareki-lab/wbs-trade-fair-assistant/pull/27#issuecomment-6426321107).
+
+Scope of CODE READY: R1 / R2.1 / R2.1b closed; verifier compares full
+executable fingerprint including `disabled`, `executeOnce`,
+`alwaysOutputData`, `retryOnFail`, `maxTries`, `waitBetweenTries`,
+`continueOnFail`, `onError`; unknown node fields reject. Independent
+regressions 108/108. Independent full-finalizer run against disposable
+n8n 2.41.7 PASSED all four cases (canonical ACCEPT, stale-published
+REJECT, disabled-validator REJECT, restored-canonical ACCEPT).
+
+Codex explicitly flagged seven deployment-oriented defects in the
+operator packet; those are addressed in
+`docs/WBS_TF_PRODUCTION_EXECUTION_PACKET.md` §0.5 mapping table under
+P-DEPLOY-02. CODE READY grants no deployment permission.
 
 ## 7. Deployment plan reference
 

@@ -1,5 +1,18 @@
 # WBS Trade Fair Assistant — RC3.3 Deployment Plan
 
+> **⚠ SUPERSEDED by `docs/WBS_TF_PRODUCTION_EXECUTION_PACKET.md`
+> (P-DEPLOY-02).** This earlier document contains deployment-oriented
+> inaccuracies that Codex flagged in the RC3.3 final review
+> (https://github.com/klareki-lab/wbs-trade-fair-assistant/pull/27#issuecomment-6426321107):
+> absent operator shell scripts; invented finalizer CLI flags; wrong
+> `ai_lead_context` signature (`uuid[], text[]` instead of `jsonb`);
+> wrong AI context role name (`wbs_tf_ai_context` instead of
+> `trade_fair_ai_context` + Owner-provisioned LOGIN role); invalid
+> Gateway env name (`GATEWAY_ALLOW_UPSTREAM_WEBHOOKS` instead of
+> `N8N_AI_EXTRACT_URL` / `N8N_AI_ASK_URL`). Read-only historical
+> record only. Do not use for execution. The authoritative packet is
+> P-DEPLOY-02.
+
 **Scope:** prepared, **not executed.** Nothing below has been run against
 production. Every step requires explicit Owner GO at execution time.
 

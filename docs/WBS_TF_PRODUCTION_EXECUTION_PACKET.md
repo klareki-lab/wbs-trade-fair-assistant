@@ -1,7 +1,10 @@
-# WBS Trade Fair Assistant — Production Execution Packet (P-DEPLOY-01)
+# WBS Trade Fair Assistant — Production Execution Packet (P-DEPLOY-02)
 
-**Status: PREPARATION GO / PRODUCTION EXECUTION HOLD.**
+**Status: OPERATOR PACKET READY / PRODUCTION EXECUTION HOLD.**
 
+Supersedes P-DEPLOY-01. Addresses the deployment-oriented findings in
+the Codex RC3.3 final review
+(https://github.com/klareki-lab/wbs-trade-fair-assistant/pull/27#issuecomment-6426321107).
 Nothing in this packet has been executed against production. Every step
 requires explicit Owner GO at execution time (see
 `docs/WBS_TF_OWNER_GO_CHECKLIST.md`).
@@ -9,13 +12,10 @@ requires explicit Owner GO at execution time (see
 ## 0. Pinned release
 
 ### Code SHA
-`3421a5d2bb842461c2c12c0f565f53249eeeee05` (RC3.3 verifier fix)
+`3421a5d2bb842461c2c12c0f565f53249eeeee05` (RC3.3 verifier fix; Codex
+CODE READY)
 
-### Acceptance+packet SHA
-`49693b330ef6f0340205e84c06f7924b688212bb` (release acceptance docs)
-→ branched to `prep/wbs-tf-p-deploy-01` for this packet.
-
-### Deployment file pins (sha256)
+### Deployment file pins (sha256; recompute before executing matching step)
 ```
 workflows/wf-07-messe-hub-ai-extract.adapted.json
   a7ce5de465fa624c5445730ed3c45f33f651c1da698cbd5ca26b8a0f32b3d604
@@ -23,43 +23,53 @@ workflows/wf-08-messe-hub-ai-ask.adapted.json
   c448ab58d77155c0c5dd19e2c62ba0aa04c920b30f15ab6d401e0e5703d8d63b
 integration/n8n-live-01/verify-published.mjs
   7e951d1d94fafbcdfedb075b4a014ebc5b3903f737c1dd0ca1e2a371fec4848e
-integration/n8n-live-01/finalize.mjs
-  36145d817616fa618547f142ccef4fca04024772922da3c9703e02ee0756831f
 Dockerfile.dashboard-staging
   2a3fb936a0dfc2efbdf9515f0d07ea01af09425b298b0a2a7b5c26cbd9fbb3ec
-ops/nginx/messe.klare-ki.de.bootstrap.conf
-  c940ad388c135f836b917c73697aea3c0f4e24ff4b570a1a63aca71564a33362
-ops/nginx/messe.klare-ki.de.https-holding.conf
-  6cd41d4a8baea767da0ce554dd3cd0fb1b6233e32715175242c3f43548cbc0e1
-ops/nginx/messe.klare-ki.de.conf
-  2858e98e492deea159137e889b1a1529ad9313804391fe799de919bde39954bd
-sql/production/dashboard_role_production.sql
-  617862b9b0817e11d5d9d6ceacb7c82e3264e299b1c3b201d60eda1847ade9fd
+ops/nginx/messe.klare-ki.de.bootstrap.conf        c940ad38…
+ops/nginx/messe.klare-ki.de.https-holding.conf    6cd41d4a…
+ops/nginx/messe.klare-ki.de.conf                  2858e98e…
+sql/production/dashboard_role_production.sql      617862b9…
 sql/production/dashboard_role_production_rollback.sql
-  acdde949282ef258ad7ab7af0660752915884ebf57bcea64b2616c4d04a73452
-sql/production/dashboard_crm_v1_up.sql
-  85317d5810d0d4de3d25a989f81858146c8fe3a71c8ecbd13641a410a0ff0ac7
-sql/production/dashboard_crm_v1_down.sql
-  9c11b779d1cc9281ff49482b7d998f6a3bfc8da3d3e607c4ee4d02c3de395b1f
+                                                   acdde949…
+sql/production/dashboard_crm_v1_up.sql             85317d58…
+sql/production/dashboard_crm_v1_down.sql           9c11b779…
+ops/n8n/import_wf_rc3.sh
+  d5498b4c69081de7d8f02656f658010e7a051021bdefeb12e46d7dfe9be02a35
+ops/n8n/activate_wf.sh
+  5de48e42fc67a0ae362febdfab24069c51a593d1a6ecd6a8e93d8ddc4c35a84c
+ops/n8n/verify_published_production.mjs
+  215a234c348b20970f957ba372d66e5d12d0993c51c046a2c63b6919caa66cb4
 ```
 
 The Owner operator MUST re-compute each sha256 before executing the
 corresponding step, and compare to this list.
 
+## 0.5 Codex RC3.3 finding → correction mapping
+
+| Codex finding | Correction in this packet |
+|---|---|
+| 1. "Deployment plan §4 references absent `ops/n8n/import_wf07_wf08.sh` and `activate_wf07_wf08.sh`." | §3.2 and §3.3 now reference the committed operator scripts `ops/n8n/import_wf_rc3.sh` and `ops/n8n/activate_wf.sh` (new in this packet). End-to-end validated against disposable n8n 2.41.7 in `integration/n8n-live-01/evidence/rc33-operator-dryrun.txt`. |
+| 2. "Finalizer invocation supplies `--workflow-ids` / `--mode=production-verify-only` which the pinned finalizer does not parse: it still reads local `.runtime/state.json`, uses the isolated login/API target and can update retention settings." | §3.4 removes the invented CLI entirely. The genuinely read-only production verifier is a new separate tool `ops/n8n/verify_published_production.mjs`; it issues exactly one write (POST `/rest/login`) and no other non-GET call. Grep audit cited in-file; validated against disposable n8n with positive ACCEPT (exit 0) and `disabled=true` REJECT (exit 1) cases. The pinned `integration/n8n-live-01/finalize.mjs` is explicitly labelled **isolated-use only** — it PATCHes `settings` to normalize retention and MUST NOT be invoked against production. |
+| 3. "Credential plan §3 cites `ai_lead_context(uuid[], text[])`; committed SQL defines `ai_lead_context(jsonb)`." | §2.4 and §3.1 use the correct `ai_lead_context(jsonb)` signature. The role name is also corrected: the committed CRM migration creates `trade_fair_ai_context` (NOLOGIN), not `wbs_tf_ai_context`. Owner provisions a dedicated LOGIN role, by convention `trade_fair_ai_login`, and `GRANT trade_fair_ai_context TO trade_fair_ai_login`. |
+| 4. "The proposed `GATEWAY_ALLOW_UPSTREAM_WEBHOOKS` setting is not consumed by this Gateway; its actual configuration uses `N8N_AI_EXTRACT_URL` / `N8N_AI_ASK_URL` and origin validation." | §4.2 replaced with the real Gateway env schema derived from `gateway/server.mjs` (loadConfig): `N8N_AI_EXTRACT_URL`, `N8N_AI_ASK_URL`, `N8N_AI_ALLOWED_ORIGIN` (optional, defaults to the capture URL origin), plus existing baseline (`N8N_HEADER_KEY`, `N8N_CAPTURE_URL`, `N8N_STATUS_URL`, `DASHBOARD_*`). Both AI URLs must share the same origin and use HTTPS outside loopback. |
+| 5. "REST `/rest` cookie authentication must also be distinguished from the public API key interface." | All `/rest/*` operations in this packet use `/rest/login` cookie session (produced by the operator scripts). The public API key header `X-N8N-API-KEY` targets `/api/v1/*` and is NOT used in this packet; prior references removed from both the packet and the Owner GO checklist. |
+| 6. "Acceptance report §3.5 must not imply that old evidence is an exact-current-canonical real-OpenAI pass: WF-08 prompt, structured-output configuration and output-check code changed between that SHA and RC3.3." | `docs/WBS_TF_RELEASE_ACCEPTANCE.md` §3.5 updated. Historical `gateway-e2e.json` evidence (pinned at `6b64f70d…`) stays labelled historical. A new RC3.3 exact-candidate real-OpenAI acceptance is an Owner-authorised step before §G6 of the checklist; this packet does not consume paid API. |
+| 7. "`rc33-backup-restore.txt`: dump uses `--no-owner --no-privileges`; the role and grants are recreated, not automatically recovered from the dump." | §5.1 now takes two artefacts: a schema+data dump (default committed procedure) PLUS `pg_dumpall --roles-only` for role/ACL recovery, OR explicit re-run of the committed migrations post-restore. §5.2 validates both. The synthetic drill in evidence is kept as a procedure confirmation, not role-recovery evidence. |
+
 ## 1. Preflight (read-only, before any Owner GO)
 
 **P1 — Code hashes match pin list (§0).**
 ```bash
-cd <checkout>
-shasum -a 256 workflows/wf-07-*.json workflows/wf-08-*.json \
+shasum -a 256 \
+  workflows/wf-07-*.json workflows/wf-08-*.json \
   integration/n8n-live-01/verify-published.mjs \
-  integration/n8n-live-01/finalize.mjs \
   Dockerfile.dashboard-staging \
   ops/nginx/messe.klare-ki.de*.conf \
-  sql/production/*.sql
+  sql/production/*.sql \
+  ops/n8n/import_wf_rc3.sh ops/n8n/activate_wf.sh \
+  ops/n8n/verify_published_production.mjs
 ```
-Expected: each hash matches §0. **FAIL action:** STOP; the local checkout
-drifted from the pinned release.
+Expected: each hash matches §0. **FAIL action:** STOP.
 
 **P2 — Regression suite re-run.**
 ```bash
@@ -70,65 +80,55 @@ node --test tests/integration/rc31_regression.mjs \
   tests/test_gateway_dashboard.mjs tests/test_dashboard.mjs \
   integration/n8n-live-01/test-adaptations.mjs
 ```
-Expected: `tests 108 pass 108 fail 0`.
-**FAIL action:** STOP; investigate regression before any production step.
+Expected: `tests 108 pass 108 fail 0`. **FAIL action:** STOP.
 
 **P3 — Production n8n catalog unchanged.**
-```bash
-# via MCP pam_n8n_workflow_list (Owner-side) or n8n REST on 127.0.0.1:5678
-# compare WF-A/B/C/D ids and activeVersionId with the Phase A snapshot:
-#   WF-A d5uO1lnwjOirJ5Xf  activeVersionId=0c87ae2a-8199-4520-911d-d5869d17601b
-#   WF-B dr05aJRh8Lu6VpSA  activeVersionId=c68f7272-56bb-4cd8-a777-f863f04e4697
-#   WF-C bRkCsVxZXU85yqLI  activeVersionId=b2c08c88-10af-4bdd-b28c-76b0c750b171
-#   WF-D THulrTbNEZ2FrgJ3  activeVersionId=a876cc62-f54e-432a-a779-a36be3d1dcbf
-```
-Expected: all four ids present, active=true, each versionId==activeVersionId,
-and each activeVersionId equals the recorded value.
-**FAIL action:** STOP; WF-A..D drift must be reviewed independently before
-RC3.3 can proceed.
+Compare WF-A/B/C/D ids and `activeVersionId` with the baseline recorded
+in `docs/WBS_TF_RELEASE_ACCEPTANCE.md` §2.2.
+Expected: all four ids present, `active=true`,
+`versionId==activeVersionId`.
+**FAIL action:** STOP.
 
 **P4 — No workflow collision for RC3 webhook paths.**
-Expected: no existing workflow uses `messe-hub/ai-extract` or `messe-hub/ai-ask`.
-**FAIL action:** STOP; investigate and rename or coordinate with the
-responsible workflow owner.
-
-**P5 — Gateway container currently running + a saved rollback snapshot present.**
 ```bash
-docker ps --filter name=wbs-trade-fair-gateway --format '{{.Names}} {{.Status}}'
+curl -b "$CJ" "$N8N_BASE_URL/rest/workflows" | \
+  jq -r '.data[] | select(.name|test("WF-07|WF-08|messe-hub-ai"))'
+```
+Expected: empty. **FAIL action:** STOP.
+
+**P5 — Gateway container running + saved rollback snapshot present.**
+```bash
+docker ps --filter 'name=wbs-trade-fair-gateway' --format '{{.Names}} {{.Status}}'
 docker ps -a --filter 'name=wbs-trade-fair-gateway.saved-' --format '{{.Names}} {{.Status}}'
 ```
-Expected: active container `Up …`; at least one `wbs-trade-fair-gateway.saved-*`
-container in `Exited (0)` state ready for `docker start`.
-**FAIL action:** STOP; create a baseline snapshot before any swap (F3B R3 §6).
+Expected: active container `Up …`; at least one `.saved-*` container
+`Exited (0)`. **FAIL action:** STOP; capture baseline first (F3B R3 §6).
 
-**P6 — Private secrets directory present.**
+**P6 — Secrets directory present.**
 ```bash
 stat -c '%a %U:%G' /opt/wbs-trade-fair/secrets
 ```
-Expected: `700 root:root`. **FAIL action:** STOP; fix permissions before
-placing any new secret file.
+Expected: `700 root:root`. **FAIL action:** STOP; fix permissions.
 
 **P7 — Local nginx syntax check for the three RC3 vhosts.**
 ```bash
 ops/nginx/check_vhosts.sh
 ```
-Expected: `PASS messe.klare-ki.de.bootstrap.conf`,
-`PASS messe.klare-ki.de.https-holding.conf`,
-`PASS messe.klare-ki.de.conf` (confirmed locally today).
-**FAIL action:** STOP; fix the config file before any `nginx -s reload`.
+Expected: 3× `PASS`. **FAIL action:** STOP.
 
 ## 2. Neon production — migrations and roles
 
 **Prerequisite before any step in §2: Owner Gate 2.1 CONFIRMED.** The
-production Neon branch identity cannot be independently derived from the
-repository or Phase A probes; it must be verified out-of-band.
+production Neon branch identity cannot be independently derived from
+this repository; it must be verified out-of-band.
 
 ### Owner Gate 2.1 — Production Neon branch identity
-Owner-side verification (from a non-shared workstation, with production
-Neon credentials never written to repo or chat):
+
+Owner-side verification against the production branch of the Neon
+project `wbs-trade-fair-assistant`. Credentials never written to repo
+or chat.
 
 ```sql
--- Target: production branch of project wbs-trade-fair-assistant.
 SELECT current_database(), current_user, inet_server_addr();
 SELECT setting FROM pg_settings WHERE name='neon.timeline_id';
 SELECT nspowner::regrole::text FROM pg_namespace WHERE nspname='trade_fair';
@@ -136,19 +136,20 @@ SELECT count(*) FROM pg_proc p
   JOIN pg_namespace n ON n.oid=p.pronamespace
   WHERE n.nspname='trade_fair' AND p.proname='dashboard_snapshot';
 SELECT rolname FROM pg_roles
-  WHERE rolname IN ('trade_fair_dashboard','wbs_tf_ai_context');
+  WHERE rolname IN ('trade_fair_dashboard','trade_fair_ai_context','trade_fair_ai_login');
 ```
 
 Expected:
-- `current_user=neondb_owner`, `current_database=neondb`
-- `nspname='trade_fair'` schema exists and is owned by `neondb_owner`
+- `current_user=neondb_owner`, `current_database=neondb`.
+- `trade_fair` schema owned by `neondb_owner`.
 - `neon.timeline_id` is **not** `a171e976ae189ef43d7ca803d826354e`
-  (that is the staging timeline)
-- `dashboard_snapshot` function **count = 0** (not yet migrated)
-- `trade_fair_dashboard` and `wbs_tf_ai_context` roles **do not exist**
+  (that is staging).
+- `dashboard_snapshot` function count = 0 (not yet migrated).
+- Roles `trade_fair_dashboard`, `trade_fair_ai_context` and the
+  Owner-chosen LOGIN role (`trade_fair_ai_login` by convention) all
+  **do not exist**.
 
-**FAIL action:** STOP. Any disagreement means the Owner is pointed at
-staging or at a wrong branch. Do NOT proceed to §2.2 or §2.3.
+**FAIL action:** STOP. Do NOT proceed to §2.2–§2.4.
 
 ### Step 2.2 — Dashboard role migration
 ```bash
@@ -157,12 +158,10 @@ psql -X -v ON_ERROR_STOP=1 -v production_branch_confirmed=on \
   -f sql/production/dashboard_role_production.sql
 unset WBS_DASHBOARD_PROD_ROLE_PASSWORD
 ```
-Expected: script completes with its own in-script read-only assertions
-PASS (prosecdef=true, provolatile='s', proowner=neondb_owner, no PUBLIC
-EXECUTE, trade_fair_dashboard has EXECUTE + USAGE and no table SELECT,
-no EXECUTE on other trade_fair.* functions).
-**FAIL action:** `psql -X -v ON_ERROR_STOP=1 -v production_branch_confirmed=on
-  -f sql/production/dashboard_role_production_rollback.sql`
+Expected: script's in-script read-only assertions PASS (prosecdef=true,
+no PUBLIC EXECUTE, `trade_fair_dashboard` has EXECUTE+USAGE and no
+table SELECT).
+**FAIL action:** run the paired `dashboard_role_production_rollback.sql`
 and STOP.
 
 ### Step 2.3 — CRM v1 migration
@@ -170,43 +169,47 @@ and STOP.
 psql -X -v ON_ERROR_STOP=1 -v production_branch_confirmed=on \
   -f sql/production/dashboard_crm_v1_up.sql
 ```
-Expected: migration completes.
-**FAIL action:** `psql -X -v ON_ERROR_STOP=1 -v production_branch_confirmed=on
-  -f sql/production/dashboard_crm_v1_down.sql`
-and STOP.
+This script itself creates the NOLOGIN role `trade_fair_ai_context`
+with narrow EXECUTE on `trade_fair.ai_lead_context(jsonb)` and all CRM
+tables/functions required by WF-08's Dashboard integration.
+**FAIL action:** run `sql/production/dashboard_crm_v1_down.sql` and
+STOP.
 
-### Step 2.4 — Provision `wbs_tf_ai_context` role
-RC3 WF-08 reads the context via a dedicated login role with EXECUTE on
-`trade_fair.ai_lead_context(uuid[], text[])` only, no table SELECT.
+### Step 2.4 — Provision the LOGIN role for n8n AI context
+
+The CRM migration (§2.3) created `trade_fair_ai_context NOLOGIN`.
+n8n cannot log in with a NOLOGIN role, so Owner provisions a dedicated
+LOGIN role and grants it membership. Convention name:
+`trade_fair_ai_login` (Owner may choose a different LOGIN name as
+long as it matches the n8n credential binding in §3.1).
 
 ```sql
 -- Executed by neondb_owner on confirmed production branch.
 BEGIN;
-CREATE ROLE wbs_tf_ai_context LOGIN
-  PASSWORD :'WBS_TF_AI_CONTEXT_PASSWORD'
+CREATE ROLE trade_fair_ai_login LOGIN
+  PASSWORD :'TRADE_FAIR_AI_LOGIN_PASSWORD'
   CONNECTION LIMIT 20;
-GRANT USAGE ON SCHEMA trade_fair TO wbs_tf_ai_context;
-REVOKE ALL ON FUNCTION trade_fair.ai_lead_context(uuid[], text[])
-  FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION trade_fair.ai_lead_context(uuid[], text[])
-  TO wbs_tf_ai_context;
+GRANT trade_fair_ai_context TO trade_fair_ai_login;
 COMMIT;
 
--- Read-only post-conditions (same transaction fails if any assertion false).
+-- Read-only post-conditions.
 DO $$ BEGIN
-  ASSERT (SELECT has_schema_privilege('wbs_tf_ai_context','trade_fair','USAGE')),
-    'USAGE on trade_fair missing';
-  ASSERT (SELECT NOT has_schema_privilege('wbs_tf_ai_context','trade_fair','CREATE')),
+  ASSERT (SELECT has_schema_privilege('trade_fair_ai_login','trade_fair','USAGE')),
+    'USAGE on trade_fair missing (via trade_fair_ai_context membership)';
+  ASSERT (SELECT NOT has_schema_privilege('trade_fair_ai_login','trade_fair','CREATE')),
     'CREATE must be denied';
   ASSERT (SELECT has_function_privilege(
-    'wbs_tf_ai_context',
-    'trade_fair.ai_lead_context(uuid[], text[])','EXECUTE')),
-    'EXECUTE on ai_lead_context missing';
-  -- No direct table privilege expected
+    'trade_fair_ai_login',
+    'trade_fair.ai_lead_context(jsonb)','EXECUTE')),
+    'EXECUTE on ai_lead_context(jsonb) missing';
   ASSERT (SELECT NOT bool_or(has_table_privilege(
-    'wbs_tf_ai_context','trade_fair.'||table_name,'SELECT'))
+    'trade_fair_ai_login','trade_fair.'||table_name,'SELECT'))
     FROM information_schema.tables WHERE table_schema='trade_fair'),
-    'Direct table SELECT must be denied for wbs_tf_ai_context';
+    'Direct table SELECT must be denied for trade_fair_ai_login';
+  ASSERT NOT (SELECT has_function_privilege(
+    'trade_fair_ai_login',
+    'trade_fair.crm_group_merge(jsonb,text,text,text)','EXECUTE')),
+    'AI login must not have CRM mutate privileges';
 END $$;
 ```
 
@@ -214,10 +217,8 @@ Expected: all assertions PASS.
 **FAIL action:**
 ```sql
 BEGIN;
-REVOKE EXECUTE ON FUNCTION trade_fair.ai_lead_context(uuid[], text[])
-  FROM wbs_tf_ai_context;
-REVOKE USAGE ON SCHEMA trade_fair FROM wbs_tf_ai_context;
-DROP ROLE wbs_tf_ai_context;
+REVOKE trade_fair_ai_context FROM trade_fair_ai_login;
+DROP ROLE trade_fair_ai_login;
 COMMIT;
 ```
 and STOP.
@@ -228,339 +229,462 @@ and STOP.
 - **Workflow 7 webhook path:** `messe-hub/ai-extract`.
 - **Workflow 8 webhook path:** `messe-hub/ai-ask`.
 - Both webhooks are the only RC3 paths; neither collides with any
-  existing production workflow (Phase A audit confirmed).
-- Both workflows require three credential bindings per node:
+  existing production workflow (acceptance §2.2 catalog audit).
+- WF-07 and WF-08 require three credential bindings:
   `httpHeaderAuth`, `openAiApi`, `postgres`.
-- Finalizer verifier `verify-published.mjs` fails CLOSED unless
-  `active=true`, `versionId==activeVersionId`, and the published
-  snapshot's complete executable fingerprint equals canonical source
-  (id, name, type, typeVersion, parameters, disabled, executeOnce,
-  alwaysOutputData, retryOnFail, maxTries, waitBetweenTries,
-  continueOnFail, onError).
+- All `/rest/*` calls in this packet use `/rest/login` cookie session.
+  The public API key `X-N8N-API-KEY` targets `/api/v1/*` and is NOT
+  used by any step here.
+- `integration/n8n-live-01/finalize.mjs` is **isolated-use only**. It
+  reads `.runtime/state.json`, points at the isolated n8n origin, and
+  PATCHes workflow `settings` to normalize retention. It MUST NOT be
+  invoked as a production read-only verifier. Use
+  `ops/n8n/verify_published_production.mjs` (§3.4).
 
 ### Step 3.1 — Credential inventory + mapping
-Reused prod credentials (no change):
-- `tjqSy2V0odocljw6` — `WBS Trade Fair — Gateway Auth` (httpHeaderAuth).
-- Shared Neon postgres cred `DIm6w5CcndY0D3RJ` is NOT reused for
-  WF-07/08; a dedicated binding is needed (step 3.2) to scope the AI
-  context connection to the `wbs_tf_ai_context` role from §2.4.
+Reused prod credential (no change):
+- `tjqSy2V0odocljw6` — `WBS Trade Fair — Gateway Auth`
+  (`httpHeaderAuth`). WF-07/08 bind to the SAME id.
 
-Created for RC3 (Owner-executed; cred IDs filled in by n8n at create):
-- NEW n8n credential `WBS Trade Fair — OpenAI RC3`, type `openAiApi`.
-  API key value = same as existing `UUprjEp0Re6kPUFN` Bearer. Do not
-  delete `UUprjEp0Re6kPUFN` (WF-B depends on it).
-- NEW n8n credential `WBS Trade Fair — AI context`, type `postgres`.
+Created for RC3 (Owner-executed; cred IDs recorded by n8n at create):
+- NEW n8n credential `WBS Trade Fair — OpenAI RC3`, type **`openAiApi`**.
+  API key value = same as existing `UUprjEp0Re6kPUFN` Bearer. Do NOT
+  delete `UUprjEp0Re6kPUFN` (WF-B depends on it as a custom header
+  auth).
+- NEW n8n credential `WBS Trade Fair — AI context`, type **`postgres`**.
   Points at the production Neon host, database `neondb`, user
-  `wbs_tf_ai_context`, password = §2.4 value, SSL=require.
+  `trade_fair_ai_login` (from §2.4), password = §2.4 value,
+  SSL=`require`.
 
-Expected after create (via REST GET /rest/credentials):
-```
-WBS Trade Fair — OpenAI RC3      type=openAiApi
-WBS Trade Fair — AI context      type=postgres
-```
-**FAIL action:** DELETE the partially-created credential via
-`DELETE /rest/credentials/<id>` and STOP.
-
-### Step 3.2 — Import WF-07 / WF-08
-Executed from the Owner workstation against production n8n REST
-(`http://127.0.0.1:5678/rest/`). Workflows are **imported with
-`active:false`**; activation is a later step.
-
-Pseudo-script (actual script `ops/n8n/import_wf07_wf08.sh` to be
-prepared under this packet in a separate commit if Owner authorises
-execution). The script MUST:
-
-1. Read canonical JSON from the pinned path.
-2. Rewrite each node's credentials map in memory to the new credential
-   IDs from §3.1 (plus the existing `tjqSy2V0odocljw6`). Do not edit
-   the committed JSON.
-3. Assign `webhookId` for any webhook node that lacks one.
-4. POST `/rest/workflows` with `active:false`.
-
-Expected: two new workflows appear in `GET /rest/workflows`, each
-`active=false`, each with a server-assigned id (record both ids in
-the deployment log).
-**FAIL action:** DELETE both via `DELETE /rest/workflows/<id>` and STOP.
-
-### Step 3.3 — Activate WF-07 / WF-08
+**Expected after create (session cookie from `/rest/login`):**
 ```bash
-curl -sf -XPOST -H "X-N8N-API-KEY: $N8N_API_KEY" \
-  http://127.0.0.1:5678/rest/workflows/<wf07-id>/activate \
+curl -sfS -b "$CJ" "$N8N_BASE_URL/rest/credentials" | \
+  jq '.data[] | select(.name|test("WBS Trade Fair — (OpenAI RC3|AI context)"))'
+```
+Expected: both records with the right `type`.
+**FAIL action:** `DELETE /rest/credentials/<id>` for any partial record
+and STOP.
+
+### Step 3.2 — Import WF-07 / WF-08 via `ops/n8n/import_wf_rc3.sh`
+
+The script is **committed in this packet**. It reads canonical JSON
+from the pinned path, rebinds credentials **in memory**, assigns a
+`webhookId` if absent, POSTs `/rest/workflows` with `active:false`,
+and prints the new workflow id to stdout.
+
+Writes performed by this script (audited in-file):
+- POST `/rest/login` (session cookie).
+- POST `/rest/workflows` (create, active=false).
+
+End-to-end validated against disposable n8n 2.41.7 in
+`integration/n8n-live-01/evidence/rc33-operator-dryrun.txt` — including
+proof that the committed canonical JSON files on disk were not modified.
+
+```bash
+export N8N_BASE_URL='http://127.0.0.1:5678'           # or the Owner-chosen prod base
+export N8N_LOGIN_EMAIL='<owner-email>'
+export N8N_LOGIN_PASSWORD='<owner-password>'
+export HEADER_AUTH_CRED_ID='tjqSy2V0odocljw6'
+export OPENAI_CRED_ID='<new-openai-rc3-id>'            # from §3.1
+export PG_AI_CTX_CRED_ID='<new-ai-context-id>'         # from §3.1
+
+TF_WF07_ID=$(ops/n8n/import_wf_rc3.sh workflows/wf-07-messe-hub-ai-extract.adapted.json)
+TF_WF08_ID=$(ops/n8n/import_wf_rc3.sh workflows/wf-08-messe-hub-ai-ask.adapted.json)
+```
+
+Expected: two new workflow ids echoed to stdout; each
+`GET /rest/workflows/<id>` returns `active:false`.
+**FAIL action:** `DELETE /rest/workflows/<id>` for any created record,
+STOP.
+
+### Step 3.3 — Activate WF-07 / WF-08 via `ops/n8n/activate_wf.sh`
+
+Writes performed:
+- POST `/rest/login`.
+- POST `/rest/workflows/<id>/activate` with the current `versionId`.
+
+Refuses to activate a workflow that is already active (guard against
+accidental re-run).
+
+```bash
+WORKFLOW_ID="$TF_WF07_ID" ops/n8n/activate_wf.sh
+WORKFLOW_ID="$TF_WF08_ID" ops/n8n/activate_wf.sh
+```
+
+Expected: each run prints JSON with `active=true` and
+`versionId==activeVersionId`.
+Additionally:
+```bash
+curl -o /dev/null -w '%{http_code}\n' -X POST \
+  http://127.0.0.1:3000/webhook/messe-hub/ai-extract \
+  -H 'Content-Type: application/json' -d '{}'
+# Expected: 403 (unauth; the webhook routes exist and are gated)
+curl -o /dev/null -w '%{http_code}\n' -X POST \
+  http://127.0.0.1:3000/webhook/messe-hub/ai-ask \
+  -H 'Content-Type: application/json' -d '{}'
+# Expected: 403
+```
+
+Note: Gateway `/api/dashboard/ai/{extract,ask}` only forwards to these
+webhooks once Gateway is swapped to the RC3-aware image (§4). Until §4,
+only the raw n8n webhook paths above are reachable (and only on
+`127.0.0.1` or over the swapped Gateway proxy).
+
+**FAIL action:** `POST /rest/workflows/<id>/deactivate` + `DELETE
+/rest/workflows/<id>`, STOP.
+
+### Step 3.4 — RC3.3 published-provenance verification against live prod
+
+Use the production-safe verifier (committed in this packet):
+
+```bash
+export N8N_BASE_URL='http://127.0.0.1:5678'            # or Owner-chosen prod base
+export N8N_LOGIN_EMAIL='<owner-email>'
+export N8N_LOGIN_PASSWORD='<owner-password>'
+export WF07_ID="$TF_WF07_ID"
+export WF08_ID="$TF_WF08_ID"
+
+node ops/n8n/verify_published_production.mjs \
+  | tee /opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/verify-published.json
+```
+
+Expected: process exits **0**. Both workflows report `verdict: "PASS"`
+with `publishedVersionId==activeVersionId`. The script issues exactly
+one write (POST `/rest/login`) and no PATCH / no activation / no
+deactivation / no DELETE. The script performs retry with exponential
+backoff on `/rest/login` HTTP 429 (n8n 2.41.7 throttle), confirmed
+during disposable-instance validation.
+
+**FAIL action:** immediately deactivate both workflows:
+```bash
+curl -sfS -b "$CJ" -X POST "$N8N_BASE_URL/rest/workflows/$TF_WF07_ID/deactivate"
+curl -sfS -b "$CJ" -X POST "$N8N_BASE_URL/rest/workflows/$TF_WF08_ID/deactivate"
+```
+inspect the printed diff, and STOP.
+
+### Step 3.5 — Execution retention and timeout settings
+These settings MUST be present on both workflows AT ACTIVATION TIME:
+```
+executionOrder:              v1
+saveDataErrorExecution:      none
+saveDataSuccessExecution:    none
+saveManualExecutions:        false
+saveExecutionProgress:       false
+executionTimeout:            30
+```
+
+**Important:** `verify_published_production.mjs` only REPORTS retention
+warnings — it does not patch anything. Owner must ensure the canonical
+JSON import includes these settings before activation. If the import
+response shows different values, Owner-side PATCH is required BEFORE
+step 3.3:
+```bash
+curl -sfS -b "$CJ" -X PATCH \
+  "$N8N_BASE_URL/rest/workflows/$TF_WF07_ID" \
   -H 'Content-Type: application/json' \
-  -d "{\"versionId\":\"$(curl ... | jq -r .data.versionId)\"}"
-# repeat for wf08
+  --data-binary "$(jq -n --arg v "$versionId" '{versionId:$v, settings:{executionOrder:"v1", saveDataErrorExecution:"none", saveDataSuccessExecution:"none", saveManualExecutions:false, saveExecutionProgress:false, executionTimeout:30}}')"
 ```
+Re-GET and confirm. Then proceed to step 3.3.
 
-Expected: each `GET /rest/workflows/<id>` returns `active:true`,
-`versionId==activeVersionId`, and `GET /webhook/messe-hub/ai-extract`
-(no auth header) returns HTTP **403** (auth gate working).
-**FAIL action:** `POST /rest/workflows/<id>/deactivate`, then
-`DELETE /rest/workflows/<id>`, and STOP.
-
-### Step 3.4 — RC3.3 finalizer provenance verification against live prod
-```bash
-cd <checkout at 3421a5d>
-N8N_URL=http://127.0.0.1:5678 N8N_API_KEY=... \
-  node integration/n8n-live-01/finalize.mjs \
-  --workflow-ids=<wf07-id>,<wf08-id> \
-  --mode=production-verify-only \
-  > /opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/finalize.json
-```
-Expected: process exits 0; captured JSON shows `ok:true` for both
-workflows with `publishedVersionId==activeVersionId` and no
-`PUBLISHED_PROVENANCE_FAILED`.
-**FAIL action:** immediately `POST /rest/workflows/<id>/deactivate` for
-both, inspect the diff, STOP.
-
-### Step 3.5 — Execution retention + error handling settings
-Each WF-07/WF-08 record MUST have these settings persisted:
-```
-executionOrder: 'v1'
-saveDataErrorExecution: 'none'
-saveDataSuccessExecution: 'none'
-saveManualExecutions: false
-saveExecutionProgress: false
-executionTimeout: 30
-```
-These match the LIVE-01 isolated manifest exactly (committed in
-`integration/n8n-live-01/evidence/manifest.json`).
-
-Expected: `GET /rest/workflows/<id>` → `.data.settings` equals the above.
-**FAIL action:** PATCH `/rest/workflows/<id>` with the correct settings,
-then re-run step 3.4.
+Expected post-activation: `verify_published_production.mjs` reports no
+`WARN — … retention not fully silenced …` lines.
+**FAIL action:** repeat the retention PATCH above, re-verify.
 
 ## 4. Gateway + HTTPS
 
 ### Step 4.1 — Build the production Gateway image
 ```bash
-cd <checkout at 3421a5d>  # or merged main containing PR #27 scope
 docker build -f Dockerfile.dashboard-staging \
   -t wbs-trade-fair-gateway:rc33-${TF_ROLLOUT_TS} .
 docker inspect wbs-trade-fair-gateway:rc33-${TF_ROLLOUT_TS} \
-  --format '{{len .Config.Env}} {{.Config.Cmd}} {{.Config.User}}'
+  --format '{{.Config.User}} {{.Config.Cmd}}'
 docker create --name probe-rc33 \
   wbs-trade-fair-gateway:rc33-${TF_ROLLOUT_TS}
 docker inspect probe-rc33 --format '{{len .Mounts}} {{len .HostConfig.Binds}}'
 docker rm probe-rc33
 ```
-Expected:
-- `User = node`, `Cmd = [node server.mjs]`.
-- `len .Mounts = 0` and `len .HostConfig.Binds = 0` (image bakes
-  gateway/*.mjs + web/, no bind mounts — this is the WBS-TF-07 §5
-  invariant).
-**FAIL action:** STOP; the Dockerfile has drifted or the build context
-leaked a mount.
+Expected: `User=node`, `Cmd=[node server.mjs]`;
+`len .Mounts = 0` and `len .HostConfig.Binds = 0`.
+**FAIL action:** STOP; Dockerfile drifted or build context leaked.
 
-### Step 4.2 — RC3-aware webhook allowlist in Gateway env
-Owner-maintained private env file (e.g.
-`/opt/wbs-trade-fair/secrets/gateway.rc33.env`, mode 0600 root):
-```
-GATEWAY_ALLOW_UPSTREAM_WEBHOOKS=\
-  /webhook/trade-fair/lead,\
-  /webhook/trade-fair/status,\
-  /webhook/messe-hub/ai-extract,\
-  /webhook/messe-hub/ai-ask
-```
-Expected: new file exists, mode 0600, root-owned, not world-readable,
-not committed to Git. **FAIL action:** `chmod 0600; chown root:root`;
-re-check; STOP if the file ever had looser permissions.
+### Step 4.2 — Gateway environment (real contract from `gateway/server.mjs`)
 
-### Step 4.3 — F3B R3 §6 "Reversible swap" (Gateway swap)
+Owner-maintained private env file
+(`/opt/wbs-trade-fair/secrets/gateway.rc33.env`, mode 0600 root):
+
+```
+# Baseline (unchanged from current prod)
+PORT=3000
+HOST=127.0.0.1
+APP_ORIGIN=https://messe.klare-ki.de
+TRADE_FAIR_ACCESS_KEY=<≥16 chars; existing>
+SESSION_SECRET=<≥32 chars; existing>
+N8N_HEADER_KEY=<same value as cred tjqSy2V0odocljw6>
+N8N_CAPTURE_URL=https://messe.klare-ki.de/webhook/trade-fair/lead
+N8N_STATUS_URL=https://messe.klare-ki.de/webhook/trade-fair/status
+PUBLIC_FORM_ENABLED=true
+
+# Dashboard (unchanged if already enabled)
+DASHBOARD_ENABLED=true
+DASHBOARD_DATABASE_URL=postgresql://trade_fair_dashboard:<pwd>@<neon-host>/neondb?sslmode=require
+DASHBOARD_ACCESS_KEY=<≥16 chars; distinct from TRADE_FAIR_ACCESS_KEY>
+MESSE_CRM_ENABLED=true
+
+# RC3 (new — enable AI proxy routes /api/dashboard/ai/extract and /ai/ask)
+N8N_AI_EXTRACT_URL=https://messe.klare-ki.de/webhook/messe-hub/ai-extract
+N8N_AI_ASK_URL=https://messe.klare-ki.de/webhook/messe-hub/ai-ask
+# Optional: narrows the allowed trusted upstream origin. If omitted,
+# the Gateway derives it from N8N_CAPTURE_URL's origin. BOTH ai URLs
+# MUST share this origin (gateway/server.mjs:92). HTTPS required
+# outside loopback (gateway/server.mjs:95).
+# N8N_AI_ALLOWED_ORIGIN=https://messe.klare-ki.de
+```
+
+Expected: file mode 0600 root:root; `node -e 'import("./gateway/server.mjs").then(m => m.loadConfig(JSON.parse(fs.readFileSync("/path/to/env.parsed.json"))))'` on a parsed copy returns a valid config object without throwing.
+**FAIL action:** fix the specific config error reported by `loadConfig`,
+re-check.
+
+### Step 4.3 — F3B R3 §6 "Reversible swap"
 Documented in `docs/WBS_TF_06_F3B_PREP.md` §6. Summary:
-
-1. Capture baseline: `docker inspect wbs-trade-fair-gateway` →
+1. Capture baseline:
+   `docker inspect wbs-trade-fair-gateway` →
    `/opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/inspect.json`.
-2. Rename current container to `wbs-trade-fair-gateway.saved-${TF_ROLLOUT_TS}`.
-3. `docker run -d --name wbs-trade-fair-gateway.candidate ...` with
-   `--env-file /opt/wbs-trade-fair/secrets/gateway.rc33.env`,
-   `--restart unless-stopped`, image from step 4.1.
+2. Rename current container to
+   `wbs-trade-fair-gateway.saved-${TF_ROLLOUT_TS}` (do NOT stop first;
+   `docker rename` is atomic).
+3. `docker run -d --name wbs-trade-fair-gateway.candidate ...`
+   with `--env-file /opt/wbs-trade-fair/secrets/gateway.rc33.env`,
+   `--restart unless-stopped`, image from §4.1.
 4. `curl -fsS http://127.0.0.1:3000/healthz` → 200 OK on candidate.
-5. If healthy, rename candidate to `wbs-trade-fair-gateway` and leave
-   `.saved-${TF_ROLLOUT_TS}` as the rollback target.
+5. If healthy, rename candidate to `wbs-trade-fair-gateway`.
 
-Expected: new container Up, healthz=200. `docker ps` shows exactly one
-`wbs-trade-fair-gateway` running and at least one `.saved-${TF_ROLLOUT_TS}`
-in `Exited (0)`.
-**FAIL action:** immediately `docker start wbs-trade-fair-gateway.saved-${TF_ROLLOUT_TS}`
-with the original name (per F3B R3 §9), stop the candidate, STOP.
+Expected: new container Up, healthz=200; `docker ps` shows one
+`wbs-trade-fair-gateway` running and at least one
+`.saved-${TF_ROLLOUT_TS}` in `Exited (0)`.
+**FAIL action:** rename `.saved-${TF_ROLLOUT_TS}` back to
+`wbs-trade-fair-gateway`, `docker start wbs-trade-fair-gateway`,
+STOP.
 
-### Step 4.4 — nginx bootstrap vhost
-Document `docs/WBS_TF_06_F3B_PREP.md` §10 steps 3-5 cover this exactly.
-Summary of the three static-verified vhosts in order of install:
+### Step 4.4 — nginx vhost staging
+Three static-verified vhosts (sha256 in §0), installed in order:
+1. `ops/nginx/messe.klare-ki.de.bootstrap.conf` — HTTP-only, for ACME
+   HTTP-01 challenge.
+2. `certbot --nginx -d messe.klare-ki.de --redirect --agree-tos
+    -m <owner-email> --no-eff-email` to obtain TLS.
+3. `ops/nginx/messe.klare-ki.de.https-holding.conf` — HTTPS 503 holding
+   page while Gateway swap settles.
+4. `ops/nginx/messe.klare-ki.de.conf` — final reverse proxy to Gateway,
+   staged HSTS.
 
-1. `ops/nginx/messe.klare-ki.de.bootstrap.conf`
-   (sha256 `c940ad38…`) — HTTP-only bootstrap for Let's Encrypt HTTP-01.
-2. After `certbot --nginx -d messe.klare-ki.de --redirect --agree-tos
-    -m <owner-email> --no-eff-email` succeeds, swap to:
-3. `ops/nginx/messe.klare-ki.de.https-holding.conf`
-   (sha256 `6cd41d4a…`) — HTTPS 503 holding page.
-4. After loopback acceptance passes, swap to:
-5. `ops/nginx/messe.klare-ki.de.conf`
-   (sha256 `2858e98e…`) — final reverse proxy to Gateway, staged HSTS.
-
-All three vhosts PASSED local nginx static syntax
-(`ops/nginx/check_vhosts.sh` today).
-Expected: `nginx -t` PASS before each `nginx -s reload`.
-**FAIL action:** keep the previous conf in place; `nginx -s reload`
-only after `nginx -t` PASS; STOP.
+Each swap: `cp` into `/etc/nginx/sites-enabled/`, `nginx -t`, then
+`nginx -s reload`.
+Expected: `nginx -t` PASS before each reload; local verification
+PASSED today via `ops/nginx/check_vhosts.sh`.
+**FAIL action:** keep previous conf; STOP.
 
 ### Step 4.5 — Loopback and external HTTPS acceptance
-Reused F3B R3 §7.1 (loopback) and §7.2 (external). Specific RC3
-additions to those acceptance checks:
-
 ```bash
-# Loopback
-curl -fsS -X POST http://127.0.0.1:3000/webhook/messe-hub/ai-extract \
-  -H 'Content-Type: application/json' -d '{}' -o /dev/null -w '%{http_code}\n'
-# Expected: 403 (auth gate — never 404, never 500)
-
-curl -fsS -X POST http://127.0.0.1:3000/webhook/messe-hub/ai-ask \
-  -H 'Content-Type: application/json' -d '{}' -o /dev/null -w '%{http_code}\n'
-# Expected: 403
-
+# Loopback: raw webhook (expects 403 without auth header)
+curl -o /dev/null -w '%{http_code}\n' -X POST \
+  http://127.0.0.1:3000/webhook/messe-hub/ai-extract \
+  -H 'Content-Type: application/json' -d '{}'
+curl -o /dev/null -w '%{http_code}\n' -X POST \
+  http://127.0.0.1:3000/webhook/messe-hub/ai-ask \
+  -H 'Content-Type: application/json' -d '{}'
+# Loopback: Gateway healthz
+curl -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3000/healthz
 # External HTTPS
-curl -fsS -X POST https://messe.klare-ki.de/webhook/messe-hub/ai-extract \
-  -H 'Content-Type: application/json' -d '{}' -o /dev/null -w '%{http_code}\n'
-# Expected: 403
-
-curl -fsS https://messe.klare-ki.de/healthz -o /dev/null -w '%{http_code}\n'
-# Expected: 200
+curl -o /dev/null -w '%{http_code}\n' https://messe.klare-ki.de/healthz
+# External HTTPS: Dashboard AI proxy routes (expects session rejection
+# without an authenticated Dashboard cookie, NOT 404 or 500)
+curl -o /dev/null -w '%{http_code}\n' -X POST \
+  https://messe.klare-ki.de/api/dashboard/ai/extract \
+  -H 'Content-Type: application/json' -d '{}'
+curl -o /dev/null -w '%{http_code}\n' -X POST \
+  https://messe.klare-ki.de/api/dashboard/ai/ask \
+  -H 'Content-Type: application/json' -d '{}'
 ```
-
-**FAIL action:** rollback Gateway (step 4.3 rollback) + nginx (restore
-previous conf), STOP.
+Expected: all `curl -o /dev/null -w '%{http_code}\n'` return non-5xx;
+unauth webhook returns 403; unauth Dashboard AI proxy returns 401 or
+403 depending on origin/cookie checks; `/healthz` returns 200.
+**FAIL action:** rollback §4.3 + §4.4, STOP.
 
 ## 5. Backup and restore
 
 ### Step 5.1 — Backup immediately before migration
-Owner-side, from a non-shared workstation, with production Neon
-credentials provided through the environment (never written to repo):
+
+Two artefacts (correcting Codex finding #7). Owner-side, from a
+non-shared workstation, production Neon credentials provided through
+the environment (never written to repo or chat).
 
 ```bash
 mkdir -p /opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}
+BK=/opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}
+
+# a) Data + schema (no roles/ACL embedded; roles are rebuilt from committed SQL)
 pg_dump -h <prod-neon-host> -U neondb_owner -d neondb \
   --schema=trade_fair --no-owner --no-privileges \
-  > /opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/pre-rc33-trade_fair.sql
-chmod 0600 /opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/pre-rc33-trade_fair.sql
-sha256sum /opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/pre-rc33-trade_fair.sql \
-  | tee /opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/pre-rc33-trade_fair.sha256
+  > "$BK/pre-rc33-trade_fair.sql"
+
+# b) Role definitions and grants (so recovery is complete without replaying
+# committed migrations). Neon permits pg_dumpall --roles-only via neondb_owner.
+pg_dumpall -h <prod-neon-host> -U neondb_owner --roles-only \
+  --no-role-passwords \
+  > "$BK/pre-rc33-roles.sql"
+
+chmod 0600 "$BK"/*.sql
+for f in "$BK"/*.sql; do sha256sum "$f" >> "$BK/pre-rc33.sha256"; done
 ```
 
-Expected: dump size > 10 KB (sanity minimum for a non-empty
-`trade_fair` schema with lead data); sha256 recorded.
-**FAIL action:** STOP; investigate why pg_dump failed before any
-migration runs. The migration must have a dump to restore from.
+Expected: both files written; `pre-rc33-trade_fair.sql` > 10 KB (sanity
+minimum); `pre-rc33-roles.sql` contains `CREATE ROLE trade_fair_dashboard`
+and `CREATE ROLE trade_fair_ai_context` (plus the LOGIN role if §2.4
+has run). Note: `--no-role-passwords` is intentional so the dump does
+not carry secret material; passwords must be reset after restore.
 
-### Step 5.2 — Restore into disposable target and verify
+**FAIL action:** STOP; migration must have a complete recoverable
+baseline before any schema change.
+
+### Step 5.2 — Restore into a disposable target and verify
+
 ```bash
-docker run -d --rm --name wbs-rc33-restore-$(date +%s) \
+TARGET=wbs-rc33-restore-$(date +%s)
+docker run -d --rm --name $TARGET \
   -e POSTGRES_USER=neondb_owner \
   -e POSTGRES_PASSWORD=restore-only \
   -e POSTGRES_DB=neondb \
   -p 127.0.0.1:0:5432 postgres:16-alpine
-# wait for pg_isready, then:
-docker exec -i <container> psql -X -U neondb_owner -d neondb \
-  < /opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/pre-rc33-trade_fair.sql
+sleep 10
+docker exec -i $TARGET psql -X -U neondb_owner -d neondb < "$BK/pre-rc33-roles.sql"
+docker exec -i $TARGET psql -X -U neondb_owner -d neondb < "$BK/pre-rc33-trade_fair.sql"
 
-docker exec <container> psql -X -U neondb_owner -d neondb -c "
+# Verify roles were materialised + schema loaded + data counts match prod observation.
+docker exec $TARGET psql -X -U neondb_owner -d neondb -c "
+  SELECT rolname FROM pg_roles
+    WHERE rolname IN ('trade_fair_dashboard','trade_fair_ai_context');
   SELECT
     (SELECT count(*) FROM trade_fair.companies) AS companies,
     (SELECT count(*) FROM trade_fair.contacts) AS contacts,
     (SELECT count(*) FROM trade_fair.lead_submissions) AS submissions;
+  SELECT has_function_privilege('trade_fair_ai_context',
+    'trade_fair.ai_lead_context(jsonb)','EXECUTE') AS ai_can_exec;
 "
 ```
-Expected: table counts > 0 and consistent with the prod observation
-Owner captured out-of-band.
-Compare restore row counts to the counts recorded against production
-BEFORE the dump (Owner-captured separately).
-**FAIL action:** STOP; dump is not restorable. Do NOT run §2 migrations
-until the dump is proven restorable.
 
-Reference: the synthetic PG16 round-trip in
-`integration/n8n-live-01/_rc33_backup_restore_drill.mjs` already proved
-the same procedure returns bit-equal data + ACL for the committed
-schema (evidence: `evidence/rc33-backup-restore.txt`). The step above
-is the real-Neon analogue.
+Expected:
+- Both roles present on target.
+- Counts match the production observation Owner captured just before
+  the dump.
+- `ai_can_exec = t` (role ACL preserved by the `--roles-only` dump).
 
-### Step 5.3 — Rollback plan if RC3 breaks WF-A..D in practice
-WF-A..D never touch the new RC3 role or new RC3 workflows. The only
-plausible mechanism for an RC3 deployment to affect WF-A..D is:
+**FAIL action:** STOP; dump is not completely restorable.
 
-- SQL migration applied to the wrong Neon branch → see §2 Owner Gate.
+Reference: the committed synthetic drill in
+`integration/n8n-live-01/_rc33_backup_restore_drill.mjs` proves the
+dump/restore round-trip is byte-stable **for schema and data**, and
+that ACLs are preserved WHEN they are also dumped. The drill itself
+uses `--no-owner --no-privileges` and re-applies the ACL manually — it
+does not establish real-Neon role recovery and is retained strictly as
+procedure confirmation.
+
+### Step 5.3 — Rollback plan if RC3 breaks WF-A..D
+
+WF-A..D never touch the new RC3 role or the new RC3 workflows.
+Plausible mechanisms by which an RC3 step could affect WF-A..D:
+- SQL migration applied to the wrong Neon branch → see Owner Gate 2.1.
 - Gateway image regression affecting `/webhook/trade-fair/lead` or
-  `/webhook/trade-fair/status` → §4.3 rollback restores the saved
-  Gateway container; takes ≤ 30 s.
-- Shared credential rotated by mistake → NOT in this packet (see §7
-  explicit non-execution).
+  `/webhook/trade-fair/status` → §4.3 reverse swap, ≤ 30 s.
+- Shared credential rotated by mistake → NOT in this packet.
 
 If a regression is detected post-cutover:
-1. Deactivate WF-07/08 (§6.3 rollback 1 below). This cannot affect
-   WF-A..D directly; it only removes the Dashboard "Lead-Assistent".
+1. Deactivate WF-07/08 (§6.3 rollback 1). Does not affect WF-A..D.
 2. If regression persists, swap Gateway back (§6.3 rollback 2).
-3. If regression traces to SQL, run the rollback script (§6.3 rollback 3).
-4. If data loss is suspected, restore from §5.1 pg_dump to the
-   production branch (Owner-approved; this is a destructive restore
-   and requires a separate GO).
+3. If regression traces to SQL, run the matching rollback script
+   (§6.3 rollback 3).
+4. If data loss is suspected, restore from §5.1 to the production
+   branch — requires a separate Owner GO (destructive).
 
 ## 6. End-to-end smoke tests + canary monitoring
 
-### Step 6.1 — Post-cutover bounded-budget smoke test
+### Step 6.1 — Post-cutover bounded-budget real-OpenAI smoke test
+
+**New under P-DEPLOY-02:** this packet does not use historical
+real-OpenAI evidence from `6b64f70d…` as current acceptance. The §G6
+checklist entry below is the first bounded-budget real-OpenAI
+exercise of the exact RC3.3 canonical workflows against prod.
+
 OpenAI monthly spend cap confirmed before run.
 Daily budget cap: **≤ $5** for the first 7 days.
 Per-request body token cap: ≤ 2500 input + ≤ 500 output.
 
-Smoke calls (synthetic payloads, synthetic company and contact):
-```bash
-# 1. AI capture (WF-07 upstream of WF-A)
-curl -fsS -X POST https://messe.klare-ki.de/api/ai/extract \
-  -H 'Content-Type: application/json' \
-  --data '{ "note": "Alice von RC33 Synthetic GmbH, Score 85, warm", ... }' \
-  -o /opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/smoke-extract.json \
-  -w '%{http_code}\n'
-# Expected: 200 + {"success":true, …}
+Smoke calls via the Gateway Dashboard AI proxy routes, with a fresh
+Dashboard session cookie obtained through the normal
+`POST /api/login` flow (NOT raw webhook paths):
 
-# 2. Lead-Assistent (WF-08) — grounded answer about saved lead
-curl -fsS -X POST https://messe.klare-ki.de/api/ai/ask \
+```bash
+# Session cookie (requires DASHBOARD_ACCESS_KEY, not committed)
+curl -c "$DASH_CJ" -b "$DASH_CJ" -X POST \
+  https://messe.klare-ki.de/api/login \
   -H 'Content-Type: application/json' \
-  --data '{ "lead_ids":["FAIR-…"], "question": "Welcher Score und Budget?" }' \
-  -o /opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/smoke-ask.json \
-  -w '%{http_code}\n'
-# Expected: 200 + answer cites the exact lead_id; no PII; no non-requested leads
+  -d "{\"access_key\":\"$DASHBOARD_ACCESS_KEY\"}" \
+  -o /dev/null -w '%{http_code}\n'
+# Expected: 200
+
+# AI extract
+curl -b "$DASH_CJ" -X POST \
+  https://messe.klare-ki.de/api/dashboard/ai/extract \
+  -H 'Content-Type: application/json' \
+  --data '{"notes":"Alice von RC33 Synthetic GmbH, Score 85, warm", "session_id":"rc33-smoke-1"}' \
+  -o "$BK/smoke-extract.json" -w '%{http_code}\n'
+# Expected: 200 + response contains {"success":true, ...}
+
+# AI ask (synthetic lead_id must be a lead created in the smoke session
+# via the capture path; this validates WF-08 grounded answering).
+curl -b "$DASH_CJ" -X POST \
+  https://messe.klare-ki.de/api/dashboard/ai/ask \
+  -H 'Content-Type: application/json' \
+  --data '{"question":"Welcher Score und Budget?","context_lead_ids":["FAIR-…"], "session_id":"rc33-smoke-1"}' \
+  -o "$BK/smoke-ask.json" -w '%{http_code}\n'
+# Expected: 200; cites only the requested lead; no PII pattern
+#   /Mila|Integrationswerk|private.*synthetic/i.
 ```
 
 PASS criteria:
-- Both calls return 200.
-- WF-08 answer cites the requested lead_id only.
-- No PII pattern in WF-08 answer
-  (`/Mila|Integrationswerk|private.*synthetic/i` not found).
-- OpenAI token usage per call ≤ 2500 input + 500 output.
+- All three calls return 200.
+- WF-08 answer cites exactly the requested lead_id.
+- No PII pattern in WF-08 answer.
+- OpenAI token usage per call within the per-request cap.
 
-**FAIL action:** rollback per §6.3; STOP.
+**FAIL action:** execute Rollback 1 (§6.3) and STOP.
 
 ### Step 6.2 — Canary windows
-| Window | What to monitor | Threshold | Rollback trigger |
+| Window | Monitor | Threshold | Trigger |
 |---|---|---|---|
-| T+15m | Gateway + n8n journals; one synthetic WF-07 + one WF-08 call | 0 errors | any 5xx on the two calls |
-| T+1h  | 5xx rate on messe.klare-ki.de; OpenAI tokens/min | 5xx ≤ 2% / 5 min | 5xx > 2% for 5 min |
-| T+24h | OpenAI daily spend; execution-audit anomalies | ≤ $5/day | > $10/day or any PUBLISHED_PROVENANCE_FAILED |
-| T+7d  | Standard monitoring thresholds; grounding-gate canary | WF-08 "ungrounded" refusals occur under forced-ungrounded test | WF-08 refusal rate falls to 0 over ≥ 1 h with ≥ 10 real calls |
+| T+15m | Gateway + n8n journals; one WF-07 + one WF-08 call | 0 errors | any 5xx |
+| T+1h  | 5xx on messe.klare-ki.de; OpenAI tokens/min | 5xx ≤ 2% / 5 min | 5xx > 2% for 5 min |
+| T+24h | OpenAI daily spend; execution-audit anomalies | ≤ $5/day | > $10/day or any `PUBLISHED_PROVENANCE_FAILED` |
+| T+7d  | Standard thresholds; forced-ungrounded WF-08 test | refusal observed under forced-ungrounded | WF-08 refusal rate = 0 for ≥ 1 h with ≥ 10 real calls |
 
-Execution evidence from each window: Owner saves to
+Save each window's evidence under
 `/opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/canary-{T15m,T1h,T24h,T7d}.json`.
 
 ### Step 6.3 — Rollback commands (ready to copy-paste)
 
-**Rollback 1 — Deactivate WF-07/08 (fastest; ~1 s).**
+**Rollback 1 — Deactivate WF-07/08** (fastest, ~1 s). Uses `/rest/*`
+cookie session from `/rest/login`.
 ```bash
-curl -sf -XPOST -H "X-N8N-API-KEY: $N8N_API_KEY" \
-  http://127.0.0.1:5678/rest/workflows/<wf07-id>/deactivate
-curl -sf -XPOST -H "X-N8N-API-KEY: $N8N_API_KEY" \
-  http://127.0.0.1:5678/rest/workflows/<wf08-id>/deactivate
+# Open session; the operator shell scripts already do this internally.
+curl -sfS -c "$CJ" -X POST "$N8N_BASE_URL/rest/login" \
+  -H 'Content-Type: application/json' \
+  -d "{\"emailOrLdapLoginId\":\"$N8N_LOGIN_EMAIL\",\"password\":\"$N8N_LOGIN_PASSWORD\"}" \
+  -o /dev/null
+curl -sfS -b "$CJ" -X POST "$N8N_BASE_URL/rest/workflows/$TF_WF07_ID/deactivate"
+curl -sfS -b "$CJ" -X POST "$N8N_BASE_URL/rest/workflows/$TF_WF08_ID/deactivate"
 ```
-Effect: Dashboard "Lead-Assistent" immediately fails closed (existing
-UI behaviour). WF-A/B/C/D UNAFFECTED.
+Effect: Dashboard "Lead-Assistent" immediately fails closed with the
+existing UI message. WF-A..D UNAFFECTED.
 
-**Rollback 2 — Gateway swap back (≤ 30 s).**
+**Rollback 2 — Gateway swap back** (≤ 30 s).
 ```bash
 docker stop wbs-trade-fair-gateway
 docker rename wbs-trade-fair-gateway wbs-trade-fair-gateway.rc33-rolled-back
@@ -578,62 +702,70 @@ psql -X -v ON_ERROR_STOP=1 -v production_branch_confirmed=on \
   -f sql/production/dashboard_role_production_rollback.sql
 ```
 
-**Rollback 4 — Drop RC3 role + credentials.**
+**Rollback 4 — Drop RC3 login role + credentials.**
 ```sql
 BEGIN;
-REVOKE EXECUTE ON FUNCTION trade_fair.ai_lead_context(uuid[], text[])
-  FROM wbs_tf_ai_context;
-REVOKE USAGE ON SCHEMA trade_fair FROM wbs_tf_ai_context;
-DROP ROLE wbs_tf_ai_context;
+REVOKE trade_fair_ai_context FROM trade_fair_ai_login;
+DROP ROLE trade_fair_ai_login;
 COMMIT;
 ```
 ```bash
-curl -sf -XDELETE -H "X-N8N-API-KEY: $N8N_API_KEY" \
-  http://127.0.0.1:5678/rest/credentials/<new-openai-rc3-id>
-curl -sf -XDELETE -H "X-N8N-API-KEY: $N8N_API_KEY" \
-  http://127.0.0.1:5678/rest/credentials/<new-ai-context-id>
+curl -sfS -b "$CJ" -X DELETE "$N8N_BASE_URL/rest/credentials/<new-openai-rc3-id>"
+curl -sfS -b "$CJ" -X DELETE "$N8N_BASE_URL/rest/credentials/<new-ai-context-id>"
 ```
 
-### Rollback TRIGGERS (any one → execute Rollback 1 immediately)
-1. `PUBLISHED_PROVENANCE_FAILED` on finalizer re-run.
+### Rollback TRIGGERS (any one → Rollback 1 immediately)
+1. `PUBLISHED_PROVENANCE_FAILED` on `verify_published_production.mjs`
+   re-run.
 2. 5xx rate on `messe.klare-ki.de` > 2% over 5 min.
-3. WF-08 answer in prod contains plaintext PII pattern
+3. WF-08 answer contains PII pattern
    `/Mila|Integrationswerk|private.*synthetic/i`.
 4. OpenAI daily spend > $10 OR OpenAI 429 streak > 10 in 10 min.
 5. Owner discretion.
 
 ## 7. Explicit NON-execution items
 
-The following are intentionally **outside** this packet:
-
-- Any change to WF-A, WF-B, WF-C, or WF-D in production n8n.
-- Any shared credential rotation
+- Any change to WF-A/B/C/D in production n8n.
+- Any rotation of a shared credential
   (`DIm6w5CcndY0D3RJ`, `UUprjEp0Re6kPUFN`, `tjqSy2V0odocljw6`,
   `HvE5Js2qo8BxvrSs`, `A4Xm6WZ9d6SsMkfs`).
-- Dashboard Yuri UI rework (`feature/dashboard-yuri-ui` — separate
-  track; must NOT be deployed as part of RC3.3).
-- Any `/etc/nginx/sites-enabled/*` change beyond the three staged
-  vhost swaps in §4.4.
+- Deployment of the Dashboard Yuri UI rework
+  (`feature/dashboard-yuri-ui`).
 - Any watchtower or Docker image policy change.
-- Any production data edit outside the Owner-approved SQL migrations.
-- Access to or publication of secret file contents in logs.
-- Merge of PR #27 (the acceptance+plan branch) and/or
-  `prep/wbs-tf-p-deploy-01`.
+- Any production data mutation outside the Owner-approved SQL
+  migrations above.
+- Any secret value in logs, chat, or Git history.
+- Any invocation of `integration/n8n-live-01/finalize.mjs` against
+  production n8n (isolated-only; it PATCHes workflow `settings`).
+- Merge of PR #27 or of `prep/wbs-tf-p-deploy-01`.
 
 ## 8. Owner GO sequence (overview)
 
-See `docs/WBS_TF_OWNER_GO_CHECKLIST.md` for the detailed, initial-by-line
-checklist. The ordered gates are:
+See `docs/WBS_TF_OWNER_GO_CHECKLIST.md` for the detailed initial-by-line
+checklist. Ordered gates:
 
-G1. Codex RC3.3 independent re-review PASS on `3421a5d`.
+G1. (Already met) Codex RC3.3 CODE READY on `3421a5d`.
 G2. Owner Gate 2.1 (Neon branch identity) CONFIRMED.
-G3. Owner GO for §2 (migrations + role).
-G4. Owner GO for §3 (credentials + workflow import + activation +
-    finalizer verification).
+G3. Owner GO for §2 (migrations + CRM role + LOGIN role).
+G4. Owner GO for §3 (credentials + import + activate + verify).
 G5. Owner GO for §4 (Gateway image + swap + nginx + HTTPS).
-G6. Owner GO for §6.1 (bounded-budget smoke test).
-G7. Owner GO at each canary window promotion
-    (T+15m → T+1h → T+24h → T+7d → standard monitoring).
+G6. Owner GO for §6.1 (bounded-budget real-OpenAI smoke test).
+G7. Owner GO at each canary promotion.
 
-Any one gate failure moves the system to the matching rollback step
-and HOLDS pending Owner review.
+## 9. Operator-script dry-run evidence
+
+Validated against disposable n8n 2.41.7 (fresh container, synthetic
+credentials); evidence file
+`integration/n8n-live-01/evidence/rc33-operator-dryrun.txt`:
+
+```
+PASS — import_wf_rc3.sh WF-07 → <id> (active:false)
+PASS — import_wf_rc3.sh WF-08 → <id> (active:false)
+PASS — committed canonical JSON files unchanged on disk after import
+PASS — activate_wf.sh WF-07 → {"active":true, versionId==activeVersionId}
+PASS — activate_wf.sh WF-08 → {"active":true, versionId==activeVersionId}
+PASS — verify_published_production.mjs PASS for both workflows against disposable n8n
+PASS — verify_published_production.mjs REJECTED mutated WF-08 (exit=1), diff cites disabled
+
+RC3.3 operator script dry-run: ALL CHECKS PASS
+```

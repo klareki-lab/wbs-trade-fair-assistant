@@ -27,12 +27,14 @@ TF_AI_CTX_CRED_ID=                        # from packet step 3.1
 
 ## G1 — Codex RC3.3 independent re-review
 
-- [ ] Codex verdict PASS on `3421a5d` recorded on PR #27 (comment URL
-      logged in deployment log). ___________ (Owner initials + UTC)
-
-If Codex verdict is FAIL or CONDITIONAL PASS with remaining code
-blockers, STOP here. Address the blocker, raise a new candidate SHA
-and restart from this line.
+- [x] Codex verdict PASS on `3421a5d` recorded on PR #27
+      (https://github.com/klareki-lab/wbs-trade-fair-assistant/pull/27#issuecomment-6426321107
+      — "Codex final independent RC3.3 review — PASS — CODE READY").
+      Codex noted: CODE READY grants no deployment permission; the
+      operator-packet corrections in P-DEPLOY-02 must be in place
+      before Owner GO proceeds. All seven deployment findings addressed
+      in the packet §0.5 mapping table.
+      ___________ (Owner acknowledges Codex verdict + UTC)
 
 ## G2 — Neon production branch identity
 
@@ -43,7 +45,9 @@ and restart from this line.
 - [ ] `neon.timeline_id` is **not** `a171e976ae189ef43d7ca803d826354e`
       (that is staging).
 - [ ] `dashboard_snapshot` function count = 0 (not yet migrated).
-- [ ] Roles `trade_fair_dashboard` and `wbs_tf_ai_context` do NOT exist.
+- [ ] Roles `trade_fair_dashboard`, `trade_fair_ai_context` and the
+      Owner-chosen LOGIN role (`trade_fair_ai_login` by convention) do
+      NOT exist. (Correct names per packet §2 — not `wbs_tf_ai_context`.)
 - [ ] Timeline id captured in deployment log (secrets-folder only).
       ___________ (Owner initials + UTC)
 
@@ -51,44 +55,67 @@ If any check disagrees → STOP; the Owner is pointed at the wrong branch.
 
 ## G3 — SQL migrations
 
-- [ ] `pg_dump` taken immediately before migration (packet §5.1);
-      sha256 recorded; file mode 0600; file size > 10 KB.
-- [ ] Dump restored into a disposable PG16 container (packet §5.2);
-      table counts match the production counts captured out-of-band
-      just before the dump.
+- [ ] Backup taken immediately before migration — TWO files per packet §5.1:
+      `pre-rc33-trade_fair.sql` (schema + data) AND `pre-rc33-roles.sql`
+      (role definitions + grants via `pg_dumpall --roles-only
+      --no-role-passwords`). Both sha256s recorded; mode 0600; data dump > 10 KB;
+      roles dump contains CREATE ROLE for `trade_fair_dashboard` and
+      `trade_fair_ai_context` (post-migration this will also include the
+      LOGIN role, but at this preflight the roles don't exist yet so only
+      pre-existing roles appear).
+- [ ] Dumps restored into a disposable PG16 target (packet §5.2);
+      table counts match the production counts Owner captured just
+      before the dump; `ai_can_exec = t` on target (role ACL recoverable).
 - [ ] `sql/production/dashboard_role_production.sql` executed under
       `-v production_branch_confirmed=on`; in-script assertions PASS.
 - [ ] `sql/production/dashboard_crm_v1_up.sql` executed under
-      `-v production_branch_confirmed=on`.
-- [ ] `wbs_tf_ai_context` role created (packet §2.4); all `DO $$ … $$`
-      assertions PASS.
+      `-v production_branch_confirmed=on`. This creates
+      `trade_fair_ai_context` NOLOGIN automatically (not a separate step).
+- [ ] LOGIN role `trade_fair_ai_login` provisioned per packet §2.4;
+      all `DO $$ … $$` assertions PASS (schema USAGE via membership,
+      no CREATE, EXECUTE on `ai_lead_context(jsonb)` only, no direct table
+      SELECT, no CRM mutate privileges).
       ___________ (Owner initials + UTC)
 
 If any step fails → execute the matching rollback script and STOP.
 
 ## G4 — n8n credentials and workflows
 
+All operations use `/rest/*` with a cookie session from
+`POST /rest/login` (NOT `X-N8N-API-KEY`). The committed operator
+scripts under `ops/n8n/` handle the login flow internally.
+
 - [ ] n8n credential `WBS Trade Fair — OpenAI RC3` created (type
       `openAiApi`); API key same value as existing
       `UUprjEp0Re6kPUFN`; cred id recorded as `TF_OPENAI_CRED_ID`.
 - [ ] n8n credential `WBS Trade Fair — AI context` created (type
       `postgres`); points at production Neon host as role
-      `wbs_tf_ai_context`; cred id recorded as `TF_AI_CTX_CRED_ID`.
-- [ ] WF-07 imported with credentials rebound to
-      `tjqSy2V0odocljw6` / `TF_OPENAI_CRED_ID` / `TF_AI_CTX_CRED_ID`;
-      `active:false`; recorded id in `TF_WF07_ID`.
-- [ ] WF-08 imported with same rebind; `active:false`; recorded id in
-      `TF_WF08_ID`.
-- [ ] WF-07 activated; `GET /rest/workflows/$TF_WF07_ID` →
-      `active:true`, `versionId==activeVersionId`.
-- [ ] WF-08 activated; same assertions.
+      `trade_fair_ai_login` (from §G3); cred id recorded as
+      `TF_AI_CTX_CRED_ID`.
+- [ ] WF-07 imported via `ops/n8n/import_wf_rc3.sh workflows/wf-07-messe-hub-ai-extract.adapted.json`;
+      stdout id captured as `TF_WF07_ID`; GET confirms `active:false`.
+- [ ] WF-08 imported via the same script; stdout id captured as
+      `TF_WF08_ID`; GET confirms `active:false`.
+- [ ] Retention + timeout settings on both imported workflows match
+      packet §3.5 (PATCH applied if the import response showed
+      different values).
+- [ ] WF-07 activated via `WORKFLOW_ID=$TF_WF07_ID ops/n8n/activate_wf.sh`;
+      script's own check confirms `active:true` and
+      `versionId==activeVersionId`.
+- [ ] WF-08 activated via the same script; same assertions.
 - [ ] `curl http://127.0.0.1:3000/webhook/messe-hub/ai-extract`
       (no auth header) → HTTP 403.
 - [ ] `curl http://127.0.0.1:3000/webhook/messe-hub/ai-ask`
       (no auth header) → HTTP 403.
-- [ ] RC3.3 finalizer run (packet §3.4) exits 0; output saved under
-      `/opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/finalize.json`.
-- [ ] Retention + timeout settings on both workflows match packet §3.5.
+- [ ] RC3.3 read-only verifier run (packet §3.4) exits **0** via
+      `WF07_ID=$TF_WF07_ID WF08_ID=$TF_WF08_ID
+       node ops/n8n/verify_published_production.mjs
+       > /opt/wbs-trade-fair/secrets/backups/${TF_ROLLOUT_TS}/verify-published.json`.
+      Output has `verdict: "PASS"` for both workflows. The verifier
+      issues exactly one POST (`/rest/login`) and no other non-GET
+      call (grep-auditable in-source).
+- [ ] `integration/n8n-live-01/finalize.mjs` was NOT invoked against
+      production (isolated-use only; patches `settings`).
       ___________ (Owner initials + UTC)
 
 If any step fails → deactivate + delete workflows and credentials;
@@ -127,16 +154,26 @@ STOP.
 
 If any step fails → execute Rollback 2 (packet §6.3) and STOP.
 
-## G6 — Bounded-budget smoke test
+## G6 — Bounded-budget real-OpenAI smoke test
+
+This is the FIRST exercise of the exact RC3.3 canonical WF-07/08 against
+real OpenAI. Prior real-OpenAI gateway-e2e evidence (pinned at
+`6b64f70d…`) is historical and does NOT substitute for this step
+(acceptance report §3.5 corrected).
 
 - [ ] OpenAI organization monthly spend cap confirmed; daily budget
       ≤ $5 for the first 7 days configured in the OpenAI console.
-- [ ] WF-07 (extract) smoke call returns 200 with success:true for a
-      synthetic lead; token usage ≤ 2500 input + 500 output; response
-      saved to secrets backups folder.
-- [ ] WF-08 (ask) smoke call for the saved synthetic lead returns 200
-      with cited lead_id exactly matching request; no PII pattern in
-      answer; token usage within budget.
+- [ ] Fresh Dashboard session cookie obtained via
+      `POST /api/login` with the production `DASHBOARD_ACCESS_KEY`
+      (session cookie file mode 0600, cleared at end of smoke test).
+- [ ] AI extract smoke call `POST /api/dashboard/ai/extract` returns
+      200 with `success:true` for a synthetic lead; token usage ≤ 2500
+      input + 500 output; response saved to secrets backups folder.
+- [ ] AI ask smoke call `POST /api/dashboard/ai/ask` for the saved
+      synthetic lead returns 200 with cited `lead_id` exactly matching
+      request; no PII pattern
+      `/Mila|Integrationswerk|private.*synthetic/i` in the answer;
+      token usage within budget.
 - [ ] `trade_fair.lead_submissions` has exactly one new row with the
       synthetic submission_id; `dashboard_snapshot` returns it.
       ___________ (Owner initials + UTC)

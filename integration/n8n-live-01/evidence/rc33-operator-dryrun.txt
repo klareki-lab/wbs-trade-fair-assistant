@@ -1,0 +1,40 @@
+[rc33-opsdry] starting disposable n8n 2.41.7
+PASS — import_wf_rc3.sh WF-07 → TZgkjYW22fUCMvV4 (active:false)
+PASS — import_wf_rc3.sh WF-08 → xLHsUKUO35iebjPI (active:false)
+PASS — committed canonical JSON files unchanged on disk after import
+PASS — activate_wf.sh WF-07 → {"workflowId":"TZgkjYW22fUCMvV4","active":true,"versionId":"76a79841-21e4-4520-a369-8830d878164f","activeVersionId":"76a79841-21e4-4520-a369-8830d878164f"}
+PASS — activate_wf.sh WF-08 → {"workflowId":"xLHsUKUO35iebjPI","active":true,"versionId":"59218844-79f3-48d6-9db9-fec2172cb673","activeVersionId":"59218844-79f3-48d6-9db9-fec2172cb673"}
+PASS — verify_published_production.mjs PASS for both workflows against disposable n8n
+--- negative-case verifier stdout:
+[rc33-verify] base=http://127.0.0.1:15685
+PASS — WF-07 published provenance OK (publishedVersionId=76a79841-21e4-4520-a369-8830d878164f)
+FAIL — WF-08: PUBLISHED_PROVENANCE_FAILED: published node Ausgabe prüfen executable fingerprint diverges from canonical (fields: disabled).
+  diff: {"disabled":{"canonical":false,"published":true}}
+{
+  "base": "http://127.0.0.1:15685",
+  "results": [
+    {
+      "workflowId": "TZgkjYW22fUCMvV4",
+      "label": "WF-07",
+      "active": true,
+      "publishedVersionId": "76a79841-21e4-4520-a369-8830d878164f",
+      "draftVersionId": "76a79841-21e4-4520-a369-8830d878164f",
+      "executionTimeout": 30,
+      "retentionWarnings": [],
+      "verdict": "PASS"
+    },
+    {
+      "workflowId": "xLHsUKUO35iebjPI",
+      "label": "WF-08",
+      "verdict": "FAIL",
+      "error": "PUBLISHED_PROVENANCE_FAILED: published node Ausgabe prüfen executable fingerprint diverges from canonical (fields: disabled).\n  diff: {\"disabled\":{\"canonical\":false,\"published\":true}}"
+    }
+  ]
+}
+
+--- negative-case verifier stderr:
+
+--- negative-case verifier exit: 1
+PASS — verify_published_production.mjs REJECTED mutated WF-08 (exit=1), diff cites disabled
+
+RC3.3 operator script dry-run: ALL CHECKS PASS
