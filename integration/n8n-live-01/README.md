@@ -1,5 +1,11 @@
 # WBS-TF-N8N-LIVE-01 — actual isolated n8n integration
 
+> **RC3.1 operator correction:** This is the **real isolated n8n** path, not the demo proxy.
+> `demo/real-ai/start.sh` starts `n8n_equivalent_proxy.mjs`; its smoke tests are **proxy-only** and do **not** establish real-n8n acceptance.
+> Bootstrap imports raw committed canonical WF-07/08 parameters. A new run records its actual checked-out commit SHA.
+> Historical LIVE-01 artifacts below are not fresh RC3.1 acceptance evidence.
+> **RC3.1 full canonical webhook + Gateway execution remains PENDING until separately run in isolated n8n.**
+
 This package runs actual n8n 2.41.7 Webhook → LLM/parser/Code/Postgres → RespondToWebhook
 nodes. It does not start `n8n_equivalent_proxy.mjs` or replace workflow responses.
 The Gateway uses real HTTP for AI, WF-A capture and WF-D status. WF-B/C are not imported.

@@ -607,11 +607,9 @@ async function aiAsk() {
     // Prefer the proxy's grouped summary when present; fall back to the raw answer.
     const summary = typeof body.answer_summary === 'string' && body.answer_summary.trim() ? body.answer_summary : body.answer;
     aiMsg.appendChild(elem('div', 'msg-body', summary));
-    // Transparent truncation marker — WF-08's parser schema caps claims at 20.
-    // The proxy forwards claim_count/claim_cap into body.answer when hit; this is a
-    // belt-and-braces visible warning when the Gateway allowlist carries the field.
-    if (body.claims_truncated === true || /^\s*20\b/.test(summary) && ctx.length > 20) {
-      aiMsg.appendChild(elem('div', 'msg-warn', '⚠ Ergebnis evtl. unvollständig (WF-08 liefert höchstens 20 Aussagen pro Antwort). Kontext einschränken für eine vollständige Antwort.'));
+    // The canonical WF-08 warning is preserved verbatim in Gateway body.answer.
+    if (typeof body.answer === 'string' && /^\s*⚠\s*Ergebnis unvollständig\b/u.test(body.answer)) {
+      aiMsg.appendChild(elem('div', 'msg-warn', 'Nicht alle angefragten Werte wurden geliefert. Bitte Kontext oder Felder eingrenzen.'));
     }
     const groups = Array.isArray(body.groups) ? body.groups : [];
     if (groups.length) {

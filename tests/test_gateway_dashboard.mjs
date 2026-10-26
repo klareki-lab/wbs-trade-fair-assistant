@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
+import {readFile} from 'node:fs/promises';
 import {createGateway,loadConfig} from '../gateway/server.mjs';
 const ENV={
  HOST:'127.0.0.1',PORT:'3000',APP_ORIGIN:'http://app.test',
@@ -501,5 +502,35 @@ test('R2: AI extraction enforces WF-A field lengths, including 10000 note and 20
  try{const cookie=await signIn(address);const send=notes=>fetch(address+'/api/dashboard/ai/extract',{method:'POST',headers:{Cookie:cookie,Origin:ENV.APP_ORIGIN,'Content-Type':'application/json'},body:JSON.stringify({notes})});
  assert.equal((await send('x'.repeat(10001))).status,422);assert.equal(calls,0);
  const r=await send('Synthetic short note');assert.equal(r.status,200);const b=await r.json();for(const field of ['company_name','contact_name','phone','notes'])assert(!b.extracted[field]);assert.equal(b.extracted.website.length,1021);
+ }finally{await close();}
+});
+
+test('RC3.1: canonical WF-08 coverage warning survives Gateway allowlist and is visible to UI',async()=>{
+ const canonical=JSON.parse(await readFile(new URL('../workflows/wf-08-messe-hub-ai-ask.adapted.json',import.meta.url),'utf8'));
+ const code=canonical.nodes.find(n=>n.name==='Ausgabe prüfen').parameters.jsCode;
+ const ids=Array.from({length:9},(_,i)=>'FAIR-00000000-0000-4000-8000-'+String(i+1).padStart(12,'0'));
+ const fields=['score_band','score_total','budget_status'];
+ const context=ids.map(lead_id=>({lead_id,score_band:null,score_total:null,budget_status:'planned'}));
+ const claims=context.flatMap(l=>fields.map(field=>({lead_id:l.lead_id,field,value:l[field]}))).slice(0,20);
+ const canonicalOutput=new Function('$input','$',code)(
+  {first:()=>({json:{output:{claims,unavailable:false}}})},
+  ()=>({first:()=>({json:{context,requested_fields:fields}})})
+ )[0].json;
+ assert.match(canonicalOutput.answer,/^⚠ Ergebnis unvollständig \(20 von 27 angefragten Werten\)/);
+ const env={...ENV,N8N_AI_EXTRACT_URL:'http://upstream.test/ai-extract',N8N_AI_ASK_URL:'http://upstream.test/ai-ask'};
+ const {address,close}=await start(undefined,{env,fetchImpl:async()=>jsonResponse(200,canonicalOutput)});
+ try{
+  const cookie=await signIn(address);
+  const response=await fetch(address+'/api/dashboard/ai/ask',{
+   method:'POST',headers:{Cookie:cookie,Origin:'http://app.test','Content-Type':'application/json'},
+   body:JSON.stringify({question:'Welche Scores und Budgets?',context_lead_ids:ids})
+  });
+  assert.equal(response.status,200);
+  const body=await response.json();
+  assert.match(body.answer,/^⚠ Ergebnis unvollständig \(20 von 27 angefragten Werten\)/);
+  assert.equal(body.cited_lead_ids.length,7);
+  const ui=(await (await fetch(address+'/dashboard.js',{headers:{Cookie:cookie}})).text());
+  assert.match(ui,/Ergebnis unvollständig/);
+  assert.match(ui,/msg-warn/);
  }finally{await close();}
 });

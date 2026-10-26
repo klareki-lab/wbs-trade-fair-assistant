@@ -17,8 +17,8 @@ for (const rel of paths) {
   const doc = JSON.parse(await readFile(url, 'utf8'));
   const wf = Array.isArray(doc) ? doc[0] : doc;
   const before = JSON.stringify(wf);
-  // adaptWorkflow mutates in place. It is idempotent for the Codex transforms
-  // except webhookId, which it only assigns when absent.
+  // adaptWorkflow mutates in place and is now idempotent, including prompt contracts.
+  // Already-canonical files must remain byte-for-byte untouched.
   adaptWorkflow(wf);
   const after = JSON.stringify(wf);
   if (before === after) { console.log(`no-op: ${rel}`); continue; }
