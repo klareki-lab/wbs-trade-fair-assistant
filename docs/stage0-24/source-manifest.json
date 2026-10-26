@@ -1,0 +1,930 @@
+{
+  "schema": "messe-hub-stage0-source-v1",
+  "prepared_utc": "2026-10-26T06:52:38.058860+00:00",
+  "repository": "klareki-lab/wbs-trade-fair-assistant",
+  "issue": 24,
+  "pr": 20,
+  "source_sha": "d854721bbd440500605d03f984e1b73fa4d66490",
+  "observed_main_sha": "5fb6348db8954d233fcee5c8c782542e18f2ec90",
+  "merge_base": "5fb6348db8954d233fcee5c8c782542e18f2ec90",
+  "deployment_status": "NOT_DEPLOYED",
+  "infrastructure_inspected": false,
+  "delta": [
+    {
+      "path": ".env.example",
+      "added": "6",
+      "deleted": "0"
+    },
+    {
+      "path": "docs/R2_TEST_REPORT.md",
+      "added": "141",
+      "deleted": "0"
+    },
+    {
+      "path": "docs/WBS_MESSE_HUB_FULL_INTEGRATION.md",
+      "added": "195",
+      "deleted": "0"
+    },
+    {
+      "path": "docs/evidence/r2/full-local-tests.txt",
+      "added": "140",
+      "deleted": "0"
+    },
+    {
+      "path": "docs/evidence/r2/gateway-node22.txt",
+      "added": "412",
+      "deleted": "0"
+    },
+    {
+      "path": "docs/evidence/r2/gateway-node24.txt",
+      "added": "79",
+      "deleted": "0"
+    },
+    {
+      "path": "gateway/dashboard-crm.mjs",
+      "added": "174",
+      "deleted": "0"
+    },
+    {
+      "path": "gateway/package-lock.json",
+      "added": "50",
+      "deleted": "0"
+    },
+    {
+      "path": "gateway/package.json",
+      "added": "11",
+      "deleted": "2"
+    },
+    {
+      "path": "gateway/server.mjs",
+      "added": "179",
+      "deleted": "6"
+    },
+    {
+      "path": "ops/env/gateway.production.env.example",
+      "added": "8",
+      "deleted": "0"
+    },
+    {
+      "path": "sql/production/dashboard_crm_v1_down.sql",
+      "added": "9",
+      "deleted": "0"
+    },
+    {
+      "path": "sql/production/dashboard_crm_v1_up.sql",
+      "added": "273",
+      "deleted": "0"
+    },
+    {
+      "path": "tests/browser/messe_hub.mjs",
+      "added": "90",
+      "deleted": "0"
+    },
+    {
+      "path": "tests/helpers/pg16.mjs",
+      "added": "43",
+      "deleted": "0"
+    },
+    {
+      "path": "tests/integration/crm_pg16.mjs",
+      "added": "130",
+      "deleted": "0"
+    },
+    {
+      "path": "tests/integration/n8n_local.mjs",
+      "added": "58",
+      "deleted": "0"
+    },
+    {
+      "path": "tests/integration/workflow_contracts.mjs",
+      "added": "31",
+      "deleted": "0"
+    },
+    {
+      "path": "tests/test_dashboard.mjs",
+      "added": "2",
+      "deleted": "2"
+    },
+    {
+      "path": "tests/test_gateway_dashboard.mjs",
+      "added": "294",
+      "deleted": "4"
+    },
+    {
+      "path": "web/Messe-Admin-Hub.html",
+      "added": "74",
+      "deleted": "10"
+    },
+    {
+      "path": "web/dashboard.css",
+      "added": "29",
+      "deleted": "0"
+    },
+    {
+      "path": "web/dashboard.js",
+      "added": "479",
+      "deleted": "101"
+    },
+    {
+      "path": "workflows/README.md",
+      "added": "56",
+      "deleted": "0"
+    },
+    {
+      "path": "workflows/wf-07-messe-hub-ai-extract.adapted.json",
+      "added": "244",
+      "deleted": "0"
+    },
+    {
+      "path": "workflows/wf-08-messe-hub-ai-ask.adapted.json",
+      "added": "304",
+      "deleted": "0"
+    }
+  ],
+  "tracked_source_files": [
+    {
+      "path": ".dockerignore",
+      "mode": "100644",
+      "git_blob": "a3c284a827955a61f8758e0c7affd8cd69d5c5de",
+      "bytes": 84,
+      "sha256": "dd39da48ebdd47562ffe6ea0d82c9ef587c71ec1bca3d92b8bec34420a5891e8"
+    },
+    {
+      "path": ".env.example",
+      "mode": "100644",
+      "git_blob": "3a93a13e23f8e4e41ab0f60f40c10d7449e9857d",
+      "bytes": 653,
+      "sha256": "1d984a872df3ff3119fd26912257e14869ffb03e5a33ebc968695ae4a55c11a8"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "git_blob": "8377d655ba95ae4962e6a0ad1f2a4d2eb9539da4",
+      "bytes": 197,
+      "sha256": "049d96ad453d67afd4dc562a2ab5aaad40bfcfad5e6260fd3998ffe597cc9244"
+    },
+    {
+      "path": "Dockerfile.dashboard-staging",
+      "mode": "100644",
+      "git_blob": "f3d1329b0211e65096760b1376af6bae5ec6250a",
+      "bytes": 271,
+      "sha256": "2a3fb936a0dfc2efbdf9515f0d07ea01af09425b298b0a2a7b5c26cbd9fbb3ec"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "git_blob": "5b07f2bba2d0031296d5b7b4667c40c46142e6f2",
+      "bytes": 3526,
+      "sha256": "1d1fb1b56919f4bfbe69ab61a0de4d7de899c05039692b0f52699bbc5f52500a"
+    },
+    {
+      "path": "compose.dashboard-staging.yaml",
+      "mode": "100644",
+      "git_blob": "c95c48ab6258b5ac53c94ec6f0cc88db504c16b1",
+      "bytes": 781,
+      "sha256": "b03bd92a3efccc807f328cb26b63883c67bd4365c99c66fe6282877ade1ae82e"
+    },
+    {
+      "path": "dashboard/ANLEITUNG.md",
+      "mode": "100644",
+      "git_blob": "7f4e65911ba9e143deb866bb98f397820112848d",
+      "bytes": 8111,
+      "sha256": "a1808fdf1c93117bb78fa31cd430b2919b70cd52b776d2adf0b5f23b70eb74f7"
+    },
+    {
+      "path": "dashboard/Messe-Admin-Hub.html",
+      "mode": "100644",
+      "git_blob": "50ae29f7f0d00587f408e0000807bc6e4fe37f9b",
+      "bytes": 78362,
+      "sha256": "f53ba21d9b09e8b0ca3ed889a5e26a4baafce39242a5f76b5685eb36cf228e2e"
+    },
+    {
+      "path": "dashboard/reference-workflows/05-Messe-Hub-Daten-fuers-Dashboard.json",
+      "mode": "100644",
+      "git_blob": "f0d99cd49cb88e2aadac8b0462071dbdef3deb34",
+      "bytes": 16251,
+      "sha256": "6ea721b0978c38625c861b65ba2c5a86f1b6ead8e051daf54698e21215100d1b"
+    },
+    {
+      "path": "dashboard/reference-workflows/06-Messe-Hub-Leads-zusammenfuehren-trennen.json",
+      "mode": "100644",
+      "git_blob": "1e05f778241fe3cbdceda2e6d30a0d6315a141b7",
+      "bytes": 15588,
+      "sha256": "f83027c63fe2cca40fe7735b396c0abf7bc185d2f13a9504129f7434978a60ef"
+    },
+    {
+      "path": "dashboard/reference-workflows/07-Messe-Hub-Lead-erfassen-Chat.json",
+      "mode": "100644",
+      "git_blob": "999ac3f7a6e85b95ee26755608e8e57e893c3e03",
+      "bytes": 20278,
+      "sha256": "0b9d0de4d8b1b2e83fd7e574f0137ddeae0c4b1a3d9ecf1be20c7529168d81a5"
+    },
+    {
+      "path": "dashboard/reference-workflows/08-Messe-Hub-Lead-Assistent-Chat.json",
+      "mode": "100644",
+      "git_blob": "414ff11ad0e5b4c2909967983cdc9f4502125e49",
+      "bytes": 17974,
+      "sha256": "b3b871272218b27d6227c3d62915d2abea3cdaf975f389512e905e75031af84b"
+    },
+    {
+      "path": "dashboard/reference-workflows/yuri-01-WBS-WF-A-Lead-Capture.json",
+      "mode": "100644",
+      "git_blob": "59f5588285a9039777034d58668d0192c23bc1d1",
+      "bytes": 23851,
+      "sha256": "fabfbaf66bea5e41d1fef97a41ad1e5243f43d402a099fdc99b27e96c65113b0"
+    },
+    {
+      "path": "dashboard/reference-workflows/yuri-02-WBS-WF-B-Lead-Processing.json",
+      "mode": "100644",
+      "git_blob": "665e74dfe23099c6e43470be147163356edeca36",
+      "bytes": 103385,
+      "sha256": "d538f846a16f76f46f20695538d5817cfe67015496fa771e466498e28b9e0dce"
+    },
+    {
+      "path": "dashboard/reference-workflows/yuri-03-WBS-Lead-Status.json",
+      "mode": "100644",
+      "git_blob": "ee30b749db4b981fc80a928714d316b5ee82e302",
+      "bytes": 7311,
+      "sha256": "00b94bb58fa53c1049eb4eb55aa92d8f4125747c14bf282f3ae7e50a7b766c0e"
+    },
+    {
+      "path": "dashboard/reference-workflows/yuri-04-WBS-Sales-Email-Delivery.json",
+      "mode": "100644",
+      "git_blob": "45b20236e5cb75d6b833ac71f994cf2c159ac026",
+      "bytes": 41297,
+      "sha256": "4121b9afaffdf715676524f1aa30c22d22a16962e22cfd006f728645f3213bd1"
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "mode": "100644",
+      "git_blob": "4e9e3b1e62bcbb36beb809baec0c4164b4fa25bb",
+      "bytes": 6253,
+      "sha256": "dc983b5c172b69b3eb6681e076b6321cbf5a819c8db6e5437931aa2d29c7394c"
+    },
+    {
+      "path": "docs/DASHBOARD_API.md",
+      "mode": "100644",
+      "git_blob": "0d8ed377f8ecd94c5a914f96c72aa05874537cdc",
+      "bytes": 4551,
+      "sha256": "bb550459ef6562fcad0e559ab999f9239ac313d2875728e3c3bcf972c21db195"
+    },
+    {
+      "path": "docs/DASHBOARD_DEPLOYMENT.md",
+      "mode": "100644",
+      "git_blob": "ebbdbcc38b83cc50c11205709396dc4beb83f4e1",
+      "bytes": 6800,
+      "sha256": "51f523f4046b5197a6cc2300d8582cafdcf3fd3207685e676fb22990267eb9b4"
+    },
+    {
+      "path": "docs/DEPLOYMENT.md",
+      "mode": "100644",
+      "git_blob": "116e5043707779a629a5fbf7529101120a2620f1",
+      "bytes": 2962,
+      "sha256": "f398611c8989ae1f647ba3f0ba170e40290b7eef71e189371457343c8c1baa9a"
+    },
+    {
+      "path": "docs/HANDOVER.md",
+      "mode": "100644",
+      "git_blob": "ba68265c0206ba8c99d28f899fc3ac0f8894054b",
+      "bytes": 11192,
+      "sha256": "719c1725e5382de9a8d34dda34c5745047b5394f9ed943fcce5110fef03f4d21"
+    },
+    {
+      "path": "docs/LIVE_BASELINE.md",
+      "mode": "100644",
+      "git_blob": "23081ba12060e8324c0fa6e4697b5fb763ce2cd8",
+      "bytes": 4928,
+      "sha256": "98299e1b14a2cfa71fd854ecf734a5029f0a199f4f692d0de61730f8a74dc62c"
+    },
+    {
+      "path": "docs/R2_TEST_REPORT.md",
+      "mode": "100644",
+      "git_blob": "601db2d39f031cda702f89aab68e488514c19181",
+      "bytes": 14132,
+      "sha256": "12111d8f15fa4e375555019c8f4d9d003c45037416e7dd67d4ee514693441abb"
+    },
+    {
+      "path": "docs/ROLLBACK.md",
+      "mode": "100644",
+      "git_blob": "ae495611438ada3d4fbeaadd1ca3f55bbdf71515",
+      "bytes": 2580,
+      "sha256": "1ce6c334a2a3b0bafdcaef2a4b3e40dc0a9b004cbe55880658694ad76313ab87"
+    },
+    {
+      "path": "docs/SECURITY_REVIEW.md",
+      "mode": "100644",
+      "git_blob": "840ac12695b3282473cce567ebc4e1129fab93a2",
+      "bytes": 5781,
+      "sha256": "622f5c3a34e87114808a97e76a1f4d8d49f817561f7cad4bdae6515e50ae43d4"
+    },
+    {
+      "path": "docs/WBS_MESSE_HUB_FULL_INTEGRATION.md",
+      "mode": "100644",
+      "git_blob": "2b3bbe49423079a6966f863b97c1bfa4731b654e",
+      "bytes": 19475,
+      "sha256": "7ae509a719bf1c06278f38b0868d7021278a159661e2da8dbe1958674dba987a"
+    },
+    {
+      "path": "docs/WBS_TF_04_REPORT.md",
+      "mode": "100644",
+      "git_blob": "4e4d5cedf8c271942dfa8e139832c1fa5b90279f",
+      "bytes": 7566,
+      "sha256": "d67e8ac14021e5016a12700e9f82c3bdd1ea1fbeadf3639f11e67ba19e6d82e8"
+    },
+    {
+      "path": "docs/WBS_TF_04_STAGING_RESULT.md",
+      "mode": "100644",
+      "git_blob": "0b72b42457f5f143cf9aca71d59cec08efc2739a",
+      "bytes": 7909,
+      "sha256": "0315c6b4c3742c2033523030b7540665e8d580810b66d9ee33e1956927c020cd"
+    },
+    {
+      "path": "docs/WBS_TF_05_INDEPENDENT_REVIEW.md",
+      "mode": "100644",
+      "git_blob": "48e670441a51552e918499aa2b86a75f026660f0",
+      "bytes": 11575,
+      "sha256": "67a49511fc7fb124cd015c91203e3ecfbdf710c4683264ee51aad86e84f1b0e0"
+    },
+    {
+      "path": "docs/WBS_TF_06_F3B_PREP.md",
+      "mode": "100644",
+      "git_blob": "b43737ed2c58db8fd58c449629587d2d97b4cc65",
+      "bytes": 33575,
+      "sha256": "5c39dc6e26789a54869b1a417270f34ef79ccb8a69627fb9193153304667531f"
+    },
+    {
+      "path": "docs/WBS_TF_07_PRODUCTION_PREFLIGHT.md",
+      "mode": "100644",
+      "git_blob": "144b6116ef32ff9630c55438afad56a1def9f843",
+      "bytes": 17925,
+      "sha256": "484c78df73b129a14080ac98056d4e8085eb50702a9f8719ae9c6e2094fbe276"
+    },
+    {
+      "path": "docs/WBS_TF_08_ACCEPTANCE_TESTS.md",
+      "mode": "100644",
+      "git_blob": "5460a2e217ec05a0d31607dd0916716425030cc4",
+      "bytes": 12434,
+      "sha256": "556eadd09a14613a00f3bb8a949e0d05392ec3433470e6cdf1c05262eeb76292"
+    },
+    {
+      "path": "docs/WBS_TF_08_RELEASE_PACKET.md",
+      "mode": "100644",
+      "git_blob": "6c97ac54f50f62b4af2c46cad3254a5110453557",
+      "bytes": 24451,
+      "sha256": "2a225a0a6bade4694ae3eba3be4d56d27941b5233b6483b78c91e8c0542d8848"
+    },
+    {
+      "path": "docs/WBS_TF_10_HANDOVER.md",
+      "mode": "100644",
+      "git_blob": "928d3dd8881b38e04e5b2f75a949b03551a22599",
+      "bytes": 25956,
+      "sha256": "69ec97267dbe3415d3c309e6a836b121a1ab61bba793a081d3509c31cf38ecc7"
+    },
+    {
+      "path": "docs/WORKFLOW_MANIFEST.md",
+      "mode": "100644",
+      "git_blob": "92764160d4bd05a8702004ab15fab50261c3b289",
+      "bytes": 3038,
+      "sha256": "7dd85bae9c3465ba959dfa7536300e71a17d1399733f87d16eeb10e56e1fa9fd"
+    },
+    {
+      "path": "docs/evidence/r2/full-local-tests.txt",
+      "mode": "100644",
+      "git_blob": "6ee6ac8e88adac484f569bd3279baff5ba8ad468",
+      "bytes": 8161,
+      "sha256": "c23b61daf1d0a864587daea763eb52507623954cc4098695721631549b739949"
+    },
+    {
+      "path": "docs/evidence/r2/gateway-node22.txt",
+      "mode": "100644",
+      "git_blob": "aae1e1a51f0c7fe65514b0778c919a2d7697e676",
+      "bytes": 12797,
+      "sha256": "b55e9a82cfb6489858e5a282303d4b79e527d46769ed29771b3a115ee0581aff"
+    },
+    {
+      "path": "docs/evidence/r2/gateway-node24.txt",
+      "mode": "100644",
+      "git_blob": "c12eecdabe1836b7047962b72ace34fba0883baa",
+      "bytes": 5288,
+      "sha256": "b364231b5d0ba9b36aec74c4fd09f3327ad97657edf74a7a316d5f3a97a3a6ee"
+    },
+    {
+      "path": "gateway/README.md",
+      "mode": "100644",
+      "git_blob": "9b06e4f4ee3064fb91a15172d38b93ff334db835",
+      "bytes": 7915,
+      "sha256": "d00ec615408317f6636ad479d60f28e3a36c02a6c442738d1dafb5aa19580e98"
+    },
+    {
+      "path": "gateway/dashboard-api.mjs",
+      "mode": "100644",
+      "git_blob": "e9875f90a6bb171df86168b2382c29c823173b07",
+      "bytes": 3007,
+      "sha256": "1f6cadc854bad797b8dd8647e259caaba8ded902342dd029908f2ac0956c2300"
+    },
+    {
+      "path": "gateway/dashboard-crm.mjs",
+      "mode": "100644",
+      "git_blob": "b684f0d0771682b307c135bb08cfaa108254a68f",
+      "bytes": 10680,
+      "sha256": "19155956fecf54aa662b3e2a1b6ca0ed55a659847c1f1171028e8e4f58b4d2e3"
+    },
+    {
+      "path": "gateway/dashboard-db.mjs",
+      "mode": "100644",
+      "git_blob": "d64d888be381b4044caf1d04f3388a3d80af001a",
+      "bytes": 2395,
+      "sha256": "9788e0d34478c5001608db2f388fd78bbfc5c57668bb64fe1ea5f3b987855a1c"
+    },
+    {
+      "path": "gateway/package-lock.json",
+      "mode": "100644",
+      "git_blob": "b7c19313484417ff921173fe58d0a50588c8c880",
+      "bytes": 7216,
+      "sha256": "7a823faf68d6cb1d87ec62179a2b1f6c4585d7875293e9b81a2e24aac9bdc138"
+    },
+    {
+      "path": "gateway/package.json",
+      "mode": "100644",
+      "git_blob": "d3c8b18f04464ffa7293f3ff0bb3e2cbf5ef754e",
+      "bytes": 652,
+      "sha256": "911883c84f107e113b350387cc01dea5c7effb8150bb28853f4be354545b5329"
+    },
+    {
+      "path": "gateway/server.mjs",
+      "mode": "100644",
+      "git_blob": "7653584b2dcc113a42a275b71045d9c57c65295d",
+      "bytes": 38408,
+      "sha256": "18f8e7a845699252381c82389b2ad2c1d75e3b667d7d3e75a87bd49141d07e34"
+    },
+    {
+      "path": "ops/astra-package/ASTRA_HANDOFF.md",
+      "mode": "100644",
+      "git_blob": "47e9e7ad81e18dc6f6dde0eb0bcb40d94bc86b25",
+      "bytes": 3792,
+      "sha256": "d16fd96742e1e3e9a340b351eaa1c0faf8ffbe1336ed96bf415098f5507c9948"
+    },
+    {
+      "path": "ops/astra-package/ASTRA_INTEGRATION_DECISION.md",
+      "mode": "100644",
+      "git_blob": "e13dcd8b7ac95659a3ed47f1d4ed0810b1ae965b",
+      "bytes": 1616,
+      "sha256": "0aa5bc1d3f840504989f98f1ef42c968964b492c73b8aa14e6de210a2967e31e"
+    },
+    {
+      "path": "ops/astra-package/ASTRA_PR_DRAFT_BODY.md",
+      "mode": "100644",
+      "git_blob": "5171b53828efd83271b7c55b752f1eb0d51c4dcf",
+      "bytes": 869,
+      "sha256": "fb3f6de4a4e564fb5ba2439af22ea416055e795bbf298b5c56a7448614437e63"
+    },
+    {
+      "path": "ops/astra-package/ASTRA_SHA256SUMS.txt",
+      "mode": "100644",
+      "git_blob": "fad6006e5c21c4e5fc25da119ef308b153681710",
+      "bytes": 1577,
+      "sha256": "82ddaed26f1ef30b9e167d0912c6f15cc72c4c0c7437b3efcfabeffb6c82b4d6"
+    },
+    {
+      "path": "ops/astra-package/ASTRA_TEST_REPORT.md",
+      "mode": "100644",
+      "git_blob": "33e630a44ce6f9d5664ba29d657728d55e759fb3",
+      "bytes": 2957,
+      "sha256": "d1622123796c3fb5fa0aa17cb1f584cf7518079adfa4cd5567576d799b132a80"
+    },
+    {
+      "path": "ops/astra-package/ASTRA_WBS_TF_02_OVERVIEW.md",
+      "mode": "100644",
+      "git_blob": "39e7b50f95e454850bacbf31f7898d9e69d2f3f1",
+      "bytes": 2844,
+      "sha256": "ee175c17fdfdaa01eeec044d0eeade979b209bcbd0d551f0b44a4cbbb2df2556"
+    },
+    {
+      "path": "ops/env/gateway.production.env.example",
+      "mode": "100644",
+      "git_blob": "7fb5c3a70b68aa7e3733182792ad33b7b8b0b329",
+      "bytes": 1774,
+      "sha256": "2b22e5a35d6d4b8419a7041806d2832ee7d80f17bb16545a5d55cbd8a922b76f"
+    },
+    {
+      "path": "ops/nginx/check_vhosts.sh",
+      "mode": "100755",
+      "git_blob": "09bddfef12ba3b9610ba09db4e569d7db1a5f778",
+      "bytes": 993,
+      "sha256": "53215125fa378581955c6a1cc7d8caba60a64d847f36182bc56916fef80ffc22"
+    },
+    {
+      "path": "ops/nginx/messe.klare-ki.de.bootstrap.conf",
+      "mode": "100644",
+      "git_blob": "9047d91cf40f30c66dc8509230605aa5c6bac96d",
+      "bytes": 963,
+      "sha256": "c940ad388c135f836b917c73697aea3c0f4e24ff4b570a1a63aca71564a33362"
+    },
+    {
+      "path": "ops/nginx/messe.klare-ki.de.conf",
+      "mode": "100644",
+      "git_blob": "a8e74c116a231a1f19d248d9e0c3e6dac7842cc8",
+      "bytes": 3217,
+      "sha256": "2858e98e492deea159137e889b1a1529ad9313804391fe799de919bde39954bd"
+    },
+    {
+      "path": "ops/nginx/messe.klare-ki.de.https-holding.conf",
+      "mode": "100644",
+      "git_blob": "a3a2acd020c22d241f9625dc00e6dfeb1c99f949",
+      "bytes": 1371,
+      "sha256": "6cd41d4a8baea767da0ce554dd3cd0fb1b6233e32715175242c3f43548cbc0e1"
+    },
+    {
+      "path": "ops/nginx/syntax_check_evidence.txt",
+      "mode": "100644",
+      "git_blob": "452e4e9e4cdc87fc1b6eedadb7ceed4b109a187d",
+      "bytes": 759,
+      "sha256": "d0afb5aa5bad333f8858160ba65b6886503a6c712238aa5fbfaf277263d9eb5b"
+    },
+    {
+      "path": "ops/nginx/syntax_check_r3_evidence.txt",
+      "mode": "100644",
+      "git_blob": "ba8a1c345872d12db2debf6d92e5ca7188140729",
+      "bytes": 696,
+      "sha256": "14bbb1919396c2ef04e9e85476ade0e559a50f864ff85a3e3ed78d6da644dbf3"
+    },
+    {
+      "path": "sql/DASHBOARD_DDL_EXPORT_READ_ONLY.sql",
+      "mode": "100644",
+      "git_blob": "3bf8a10217677243622e0e3174e38d3085d086d3",
+      "bytes": 2694,
+      "sha256": "333a0cd78f3f3bea83580d63cf61f845d2e8be8a36f18f959831f4427b98da87"
+    },
+    {
+      "path": "sql/DASHBOARD_DDL_READ_ONLY.sql",
+      "mode": "100644",
+      "git_blob": "f79e858ffc2abeb251011fc33b2db01c6fcd9b31",
+      "bytes": 2143,
+      "sha256": "13e813cf63c92e073997ed437a31810af2b27cc1d901947c85a64939bac3d211"
+    },
+    {
+      "path": "sql/PREFLIGHT_READ_ONLY.sql",
+      "mode": "100644",
+      "git_blob": "eeebc74f3b47a064b284bfd68bc05f06a92ee732",
+      "bytes": 1210,
+      "sha256": "8e7db53d52ed7de7d725c85fa77ab7042ef09a4461762b74ebdbd35e84085ffc"
+    },
+    {
+      "path": "sql/catalog_staging_result.txt",
+      "mode": "100644",
+      "git_blob": "e1d0d1ed504755c5a110af1067ee83503ba10fac",
+      "bytes": 27242,
+      "sha256": "538cffac1abbfd1c9385e582c4dded5fac23516b4cbd9f9710cfa298139afb78"
+    },
+    {
+      "path": "sql/dashboard_catalog_result.txt",
+      "mode": "100644",
+      "git_blob": "e1d0d1ed504755c5a110af1067ee83503ba10fac",
+      "bytes": 27242,
+      "sha256": "538cffac1abbfd1c9385e582c4dded5fac23516b4cbd9f9710cfa298139afb78"
+    },
+    {
+      "path": "sql/dashboard_confirmed_ddl.sql",
+      "mode": "100644",
+      "git_blob": "91c1d68af82e61a7bae412b46ecef9bf91016daf",
+      "bytes": 12599,
+      "sha256": "2258b2d352c0e680fa73a1e80f9f6effd55b3a1aa0730a4589753daf2351d84c"
+    },
+    {
+      "path": "sql/dashboard_function_acl_result.txt",
+      "mode": "100644",
+      "git_blob": "be97d81b77fcd0ed787fee363d957b017f1a5b39",
+      "bytes": 3285,
+      "sha256": "92465da11da41bd60aa478d229418489302ef23a707edc4c9deb4a4ee7b4fd6a"
+    },
+    {
+      "path": "sql/dashboard_preflight_result.txt",
+      "mode": "100644",
+      "git_blob": "6ce461d91a61381bbe59da53d9260ceb103a8720",
+      "bytes": 4109,
+      "sha256": "6f263e543c52f09cba61cff1860ba5833135c9f940ca2f6f27cc4f7a4cd6a10c"
+    },
+    {
+      "path": "sql/dashboard_role_audit.sql",
+      "mode": "100644",
+      "git_blob": "957fba2ad64c8ba02d33f59013d17ea5f07a1e59",
+      "bytes": 1636,
+      "sha256": "e4c5d0a04426da14062e6a7f3b4a9fcd15b2eae1f0e3e9270a7778f131a4a26a"
+    },
+    {
+      "path": "sql/dashboard_role_staging.sql",
+      "mode": "100644",
+      "git_blob": "dfb8905656c140ad58469b8fd4dcc631031e6bce",
+      "bytes": 968,
+      "sha256": "8c5c59b24ca6dcc96f4768b88053f7dee78e088f467f9cd9d28734833beeb9df"
+    },
+    {
+      "path": "sql/dashboard_snapshot.sql",
+      "mode": "100644",
+      "git_blob": "c7ce0d7fa846031216ab4e0a582e35d30abf6a39",
+      "bytes": 555,
+      "sha256": "47bee4248ca6ad26f26462d0ba871093a51076dd175c094fbc3079a1dcbad1d5"
+    },
+    {
+      "path": "sql/dashboard_snapshot_definition.sql",
+      "mode": "100644",
+      "git_blob": "d61b022602af98e048ed78677a807eee526603bc",
+      "bytes": 5697,
+      "sha256": "02a9c69326d66c00a35bec399ea26a2396b681e18b95111b3627d174d2d8b9ff"
+    },
+    {
+      "path": "sql/dashboard_staging_rollback.sql",
+      "mode": "100644",
+      "git_blob": "e8e4007d366ed2e3141ef29e72077e22dc44aeec",
+      "bytes": 650,
+      "sha256": "823da22140b38f452af40c2257c134dafabab5e80016bbd1eedc1a5c8caba861"
+    },
+    {
+      "path": "sql/e2e_staging_result.txt",
+      "mode": "100644",
+      "git_blob": "40b123b652d6cd7894736043141fcb5672b18eeb",
+      "bytes": 559,
+      "sha256": "d5e6a329cfcd54b38a30f065cd0b9dbcf10721175d2adf4d5098134e0f92c6af"
+    },
+    {
+      "path": "sql/preflight_staging_result.txt",
+      "mode": "100644",
+      "git_blob": "6ce461d91a61381bbe59da53d9260ceb103a8720",
+      "bytes": 4109,
+      "sha256": "6f263e543c52f09cba61cff1860ba5833135c9f940ca2f6f27cc4f7a4cd6a10c"
+    },
+    {
+      "path": "sql/production/dashboard_crm_v1_down.sql",
+      "mode": "100644",
+      "git_blob": "f5f36279f28c3ce0adc89e5fed21da5b10e7af0f",
+      "bytes": 533,
+      "sha256": "9c11b779d1cc9281ff49482b7d998f6a3bfc8da3d3e607c4ee4d02c3de395b1f"
+    },
+    {
+      "path": "sql/production/dashboard_crm_v1_up.sql",
+      "mode": "100644",
+      "git_blob": "d875f3b19d778b27dc5a990a22850abd2fec9be8",
+      "bytes": 22502,
+      "sha256": "85317d5810d0d4de3d25a989f81858146c8fe3a71c8ecbd13641a410a0ff0ac7"
+    },
+    {
+      "path": "sql/production/dashboard_role_production.sql",
+      "mode": "100644",
+      "git_blob": "d518c0042572152a236cdf523e57573c38a4feb7",
+      "bytes": 6251,
+      "sha256": "617862b9b0817e11d5d9d6ceacb7c82e3264e299b1c3b201d60eda1847ade9fd"
+    },
+    {
+      "path": "sql/production/dashboard_role_production_rollback.sql",
+      "mode": "100644",
+      "git_blob": "22f5b402359a804c16d0cd38debc16ee6d5f0f4c",
+      "bytes": 2344,
+      "sha256": "acdde949282ef258ad7ab7af0660752915884ebf57bcea64b2616c4d04a73452"
+    },
+    {
+      "path": "sql/staging_evidence/e2e_positive.txt",
+      "mode": "100644",
+      "git_blob": "9c5715343a8c3c0e074e38b83f28f94c57f11171",
+      "bytes": 947,
+      "sha256": "a227637839cc38d90a39b96a405f3a1bdfc93cfb3a173b1ac7568dffa1c1d17c"
+    },
+    {
+      "path": "sql/staging_evidence/function_install.txt",
+      "mode": "100644",
+      "git_blob": "3f27e6bb9082b7ef81d1ec97f5e427ee39c8a394",
+      "bytes": 48,
+      "sha256": "c8b2eb7bad8b72820250068608ad7730b7b7b5788ead8f8cc760a2e9e11fccba"
+    },
+    {
+      "path": "sql/staging_evidence/role_audit.txt",
+      "mode": "100644",
+      "git_blob": "3b04c90271dee77c0bf5ec542db5f98517e2d650",
+      "bytes": 18,
+      "sha256": "b680c8b195713dfa322ff08e06e55c6039febb83d37f44842b296577f23f20fe"
+    },
+    {
+      "path": "sql/staging_evidence/role_install.txt",
+      "mode": "100644",
+      "git_blob": "8cae1b35314395146cf9c6a46c8781b4e64ee745",
+      "bytes": 31,
+      "sha256": "793be630d2fc7729202ab06cf8cd1f9c22d08be435f40c81a3654c8142200576"
+    },
+    {
+      "path": "sql/staging_evidence/role_probe.txt",
+      "mode": "100644",
+      "git_blob": "b038d7ac607d3e6b256e45c0f6e3b4888390c80f",
+      "bytes": 2680,
+      "sha256": "f1fbb7fa275a25d2dc65bb85c3c92c14c92d17245d655dcade6f58ef01dc9138"
+    },
+    {
+      "path": "sql/staging_evidence/role_rollback.txt",
+      "mode": "100644",
+      "git_blob": "a38122d56a8b240921a93f2f9088c05c922df34d",
+      "bytes": 51,
+      "sha256": "8f06c3b77341f88491e9ebefee2b6450e06b980a300df296a7b7ea0ca0b48c78"
+    },
+    {
+      "path": "sql/staging_evidence/rows_rollback.txt",
+      "mode": "100644",
+      "git_blob": "e9828fae48d0bca345fba3d101e8d85a35729455",
+      "bytes": 178,
+      "sha256": "2080cd7e83d51aea69c1c2ec57cdb2fb2ccd19d5f821432e51e859b7d7bee227"
+    },
+    {
+      "path": "sql/staging_evidence/seed.txt",
+      "mode": "100644",
+      "git_blob": "fbf4965b328dfc515fcf6d6716bc4a377549235e",
+      "bytes": 324,
+      "sha256": "8a225f6c6f3d04dbeb8146eb2c66f0f88e427980eac461b364df90cd936dbf82"
+    },
+    {
+      "path": "sql/trade_fair_schema.txt",
+      "mode": "100644",
+      "git_blob": "1b5d7eae4fa438656824dc6e9fabed1cc1a5cea5",
+      "bytes": 7454,
+      "sha256": "e7b055bf291a2b0a10af793c058f9f7ae2568aca3c4cb09ad78d4888f4ef8521"
+    },
+    {
+      "path": "tests/browser/messe_hub.mjs",
+      "mode": "100644",
+      "git_blob": "22d4e57aa088f7fcd608e3d985c3078debd4081e",
+      "bytes": 11558,
+      "sha256": "b62ffd8577f59cdafd466f7e6368abb25bd508a2e3555151a6e5e35471ec9e8c"
+    },
+    {
+      "path": "tests/fixtures/dashboard_smoke_schema.sql",
+      "mode": "100644",
+      "git_blob": "ea461c3303f3000a96392110e8dfd0c0d0b6deb9",
+      "bytes": 2096,
+      "sha256": "966c67c7c926f0c1632709bfd8eec6756468e58c8cc534a970471cbe85dd78e5"
+    },
+    {
+      "path": "tests/helpers/pg16.mjs",
+      "mode": "100644",
+      "git_blob": "e7d1f22d4a915c271c91cffa0ec20242a41440fa",
+      "bytes": 4055,
+      "sha256": "bd0caa837d4592977f6fbe83c794783f4f8526a24b4aab5982413c4835539db7"
+    },
+    {
+      "path": "tests/integration/crm_pg16.mjs",
+      "mode": "100644",
+      "git_blob": "473924d73d45c3ba5a233dceb7706c7ff1e474c8",
+      "bytes": 12983,
+      "sha256": "d57152c799db6cd80559b33e7dd83cc2bf0cd95a3fe0f04292f71ec2a005a031"
+    },
+    {
+      "path": "tests/integration/n8n_local.mjs",
+      "mode": "100644",
+      "git_blob": "956ce6acc3cd57e68b294fea116e2194162b0664",
+      "bytes": 5808,
+      "sha256": "50887f374d735aa307cc3098169d3c3d77bacd8e37278581ea0594aed7d2bc09"
+    },
+    {
+      "path": "tests/integration/workflow_contracts.mjs",
+      "mode": "100644",
+      "git_blob": "9268dd388c8ccddb46a7a3d7021fd1f72d46892c",
+      "bytes": 3981,
+      "sha256": "e9abd92b5324602bed3a8a48c85d628897dcf11b8957a7807ba4cc85732707af"
+    },
+    {
+      "path": "tests/test_dashboard.mjs",
+      "mode": "100644",
+      "git_blob": "571e39064196327007864bea09bd8f442d09f428",
+      "bytes": 5701,
+      "sha256": "8722ba5131075b778b0b3b65044803ac19fdfba4e700b2b93406ade836a996f2"
+    },
+    {
+      "path": "tests/test_gateway_baseline.mjs",
+      "mode": "100644",
+      "git_blob": "11e3496bb12560246ca5fce51b4ebe4d45c140d2",
+      "bytes": 6910,
+      "sha256": "32f4edb8e97439882ddef0f4a09df03f6c30d1c71de37eeff248db05aba0d0b2"
+    },
+    {
+      "path": "tests/test_gateway_dashboard.mjs",
+      "mode": "100644",
+      "git_blob": "0b14fa0d993dc52e562dcd0e8ced8cc357f8a2de",
+      "bytes": 33682,
+      "sha256": "9a92ade297236a58e24b77ffee156be30e181419742fa755afd0ed576fbfb4a8"
+    },
+    {
+      "path": "web/Messe-Admin-Hub.html",
+      "mode": "100644",
+      "git_blob": "0fb1886f43fc59fae18a7777ad210f4e31b627fd",
+      "bytes": 13928,
+      "sha256": "33734479eb2f414e877c8bfbb482e993aac0041d0c3219c1d2456bb13d1267e8"
+    },
+    {
+      "path": "web/app.js",
+      "mode": "100644",
+      "git_blob": "25150883901d4b8053c98da193eaa11a1dece88b",
+      "bytes": 25280,
+      "sha256": "852ac47b3722f909c384bbc8dfcfa632e8faef5539a561ead4061a097226fbdd"
+    },
+    {
+      "path": "web/berater-adapter.js",
+      "mode": "100644",
+      "git_blob": "fefd4d829eaaf981a9f815641fcc4e972b9331c2",
+      "bytes": 8436,
+      "sha256": "cb475637d21a52cb4312a1df651cda45d9e49272b8c8fc76ec8534d4973f1392"
+    },
+    {
+      "path": "web/berater.html",
+      "mode": "100644",
+      "git_blob": "cb5a351b411fe39c9bd9129045e9e8d5f3c36660",
+      "bytes": 21773,
+      "sha256": "6cfcbaa9101e207328533273986fc92d2374039c4196a28156848a99faa18787"
+    },
+    {
+      "path": "web/dashboard-login.html",
+      "mode": "100644",
+      "git_blob": "feb313848414fe4a96101855a3f94212e60564be",
+      "bytes": 1290,
+      "sha256": "d5eae05ae29f003690677c3fef8201840b5dad37a191e658a3d938ef8a46558b"
+    },
+    {
+      "path": "web/dashboard-login.js",
+      "mode": "100644",
+      "git_blob": "52c038aacadd9115655e266c19aafcff5fa89139",
+      "bytes": 2076,
+      "sha256": "ede1a6858d02f3ca1165dec1d186c62cf01c32d1f229ac7f500323b27e1a99cc"
+    },
+    {
+      "path": "web/dashboard.css",
+      "mode": "100644",
+      "git_blob": "a0c0fc2cb4a92c50510c09962c86ba1041ee1adc",
+      "bytes": 28911,
+      "sha256": "43fb37cc9ef71f13fcdd20d8432dd0c4f3947292b0647f6bb7c29abe0619d67e"
+    },
+    {
+      "path": "web/dashboard.js",
+      "mode": "100644",
+      "git_blob": "8d8cdd4e219d6028d2dc8523a9fc31b6eb0c8657",
+      "bytes": 35276,
+      "sha256": "5d15ec7269083953b9ced7b5dc5bda3f69c706cfbf2f55e1339f2721db8bcc24"
+    },
+    {
+      "path": "web/index.html",
+      "mode": "100644",
+      "git_blob": "fbce69c4a32cc86863da6573932096ada3756b57",
+      "bytes": 13295,
+      "sha256": "a3768d8867123fdd47a06d460f1d13960ac50ec036b2f95d04f7d5e5e0f7c81b"
+    },
+    {
+      "path": "web/styles.css",
+      "mode": "100644",
+      "git_blob": "08495de0521bcd08d8b74a46231dbbe3df91739b",
+      "bytes": 12772,
+      "sha256": "d00ae7792bc2b39a1f8c69d062137b8eff40a839dccad6a4a8bbc6704e202401"
+    },
+    {
+      "path": "workflows/README.md",
+      "mode": "100644",
+      "git_blob": "1631bb094ff9ee97ea72cfb26f1cba2845719f10",
+      "bytes": 4335,
+      "sha256": "ffdbfa1176a66bf433f302e46c57507815986624b1587a96dbc85e7d5c43937f"
+    },
+    {
+      "path": "workflows/wf-07-messe-hub-ai-extract.adapted.json",
+      "mode": "100644",
+      "git_blob": "70de7681a7c9535bf1a9bd2ea047c8573813e875",
+      "bytes": 9494,
+      "sha256": "75cdf8420fb76a2ce90b0b643b46938d034907e3ae22b57b2505e13147e1844f"
+    },
+    {
+      "path": "workflows/wf-08-messe-hub-ai-ask.adapted.json",
+      "mode": "100644",
+      "git_blob": "c4852b10cb0d89b6b9c50dcab37580cd89c66c3b",
+      "bytes": 11223,
+      "sha256": "804e71d9e70499e75017aa895111440a48e41d75e75709e33c5d6c3dd5c32d88"
+    },
+    {
+      "path": "workflows/wf-a-lead-capture.json",
+      "mode": "100644",
+      "git_blob": "f553adc5c63d4ea8d09ab1a23fbd2ad07ebd1002",
+      "bytes": 25402,
+      "sha256": "f9f8781e1c7b0dab3b81e26f79f0ca9d2cb0e48c31a9b4b8ceb3774f3790c472"
+    },
+    {
+      "path": "workflows/wf-b-lead-processing.json",
+      "mode": "100644",
+      "git_blob": "41449b076dc908c4a25d2dd82c8dbb7cddea6e7c",
+      "bytes": 106269,
+      "sha256": "dfdbdc4c52fcbe2105c81733365e05b98f833340e6ad108846dccf7de488c722"
+    },
+    {
+      "path": "workflows/wf-c-sales-email-delivery.json",
+      "mode": "100644",
+      "git_blob": "8e987408fa846c4e4cfe0474a577618cf53cf74c",
+      "bytes": 42761,
+      "sha256": "afb04102c854feddd88f44784f4a910a1d9795926d2e2991b86123ef8ad329d7"
+    },
+    {
+      "path": "workflows/wf-d-lead-status.json",
+      "mode": "100644",
+      "git_blob": "07d0ba3e1b559d5a87fee97d05f4d6a4c94ef34a",
+      "bytes": 8560,
+      "sha256": "ec8017d87e2b3ec9c5722a8fea807137852251918b7d94edad66b231454ca82d"
+    }
+  ]
+}
