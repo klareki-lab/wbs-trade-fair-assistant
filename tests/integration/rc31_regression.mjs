@@ -77,6 +77,9 @@ test('R2: bootstrap/finalizer compare raw canonical node parameters instead of r
  assert.match(start,/workflows\.push\(wf\)/);
  assert.doesNotMatch(start,/workflows\.push\(adaptWorkflow/);
  assert.match(start,/assert\.deepEqual\(n\.parameters,canonicalParameters\.get\(n\.id\)/);
- assert.match(finalize,/const expected=source;/);
+ // RC3.2 replaces the inline "const expected=source" compare with a published-
+ // snapshot verifier (verify-published.mjs) that also rejects draft-only states.
+ assert.match(finalize,/assertCanonicalPublished/);
+ assert.match(finalize,/fetchPublishedSnapshot/);
  assert.doesNotMatch(finalize,/adaptWorkflow\(source\)/);
 });
