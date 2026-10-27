@@ -66,19 +66,23 @@ The Lead Assistant is deliberately bounded: 1–20 explicit lead IDs, allowliste
 | Family | Location | Meaning |
 | --- | --- | --- |
 | Production baseline | `workflows/wf-a…wf-d…json` | Exported capture, processing, email, and status pipeline; historical production observations are documented |
-| Adapted RC3.3 | `workflows/wf-07…adapted.json`, `wf-08…adapted.json` | Revised extraction/assistant contracts and published-workflow verification; isolated evidence does not establish production deployment |
+| Adapted RC3.3 | `workflows/wf-07…adapted.json`, `wf-08…adapted.json` | Revised extraction/assistant contracts and published-workflow verification; Owner reports G5 production deployment PASS, with G6 functional acceptance pending |
 | Yuriy's references | `dashboard/reference-workflows/` | Original variants and dashboard/group/chat companions, with different credentials and trust boundaries |
 
 Do not import all families together or assume their credentials and database contracts are interchangeable. The [workflow guide](docs/WORKFLOW_GUIDE.md) explains the differences.
 
 ## Status and learning path
 
-This documentation describes RC3.3 source at `49693b3`, based on candidate `3421a5d`. The CRM/AI release is pending Owner review and production acceptance. Historical records describe a running WF-A–D pipeline and dashboard; they do not prove the current public service or the full RC3.3 release. No production checks or changes were made for this documentation task.
+This documentation describes RC3.3 source at `49693b3`, based on candidate `3421a5d`. Source implementation and local test evidence are documented separately from deployment and functional acceptance.
+
+**Production deployment: G5 PASS**, reported by the Owner on **2026-10-27**. WF-07 and WF-08 are published and active with published provenance PASS; the production Neon CRM migration is applied; Gateway RC3.3 is deployed; and the public form and Dashboard are reachable. The deployed image digest and evidence attribution are recorded in the [Owner deployment handover](docs/PROJECT_STATUS.md#owner-deployment-handover--2026-10-27). Codex did not independently access production or repeat these checks.
+
+**Functional acceptance: G6 pending.** AI/CRM end-to-end functionality is not yet fully verified, and Dashboard feature parity with Yuriy's reference is not yet accepted. Deployment success and page reachability do not establish those functional outcomes. No production changes were made for this documentation task.
 
 - [Architecture](docs/ARCHITECTURE.md): components, contracts, persistence, and trust boundaries.
 - [Workflow guide](docs/WORKFLOW_GUIDE.md): production, RC3.3, and Yuriy variants; AI and scoring details.
 - [Reproduce It Yourself](docs/REPRODUCE_IT_YOURSELF.md): infrastructure, SQL gaps, imports, credentials, and independent verification.
-- [Project status matrix](docs/PROJECT_STATUS.md): implemented, tested, historically observed in production, and unverified.
+- [Project status matrix](docs/PROJECT_STATUS.md): implemented/tested source, Owner-reported production deployment, and pending functional/parity acceptance.
 - [Public-material security review](docs/PUBLIC_SECURITY_REVIEW.md): findings, historical exposure, remediation, and review limits.
 - [Documentation map and engineering history](docs/DOCUMENTATION_MAP.md): original baseline, reviews, evidence, and operational plans.
 
