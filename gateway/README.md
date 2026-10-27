@@ -1,12 +1,19 @@
 # Train Today: mobile form and same-origin gateway
 
+For the current RC3.3 architecture and independent setup boundaries, start with
+the [repository README](../README.md), [reproduction guide](../docs/REPRODUCE_IT_YOURSELF.md)
+and [status matrix](../docs/PROJECT_STATUS.md). The route/draft notes below primarily
+describe the original form; CRM and AI behavior is covered in the newer guides.
+
 This is a runnable Node.js application. It serves the German mobile form from
 `../web/` and forwards authenticated requests to the configured n8n webhooks.
-It uses Node's built-in HTTP, cryptography and fetch APIs; no npm dependencies
-are required. Use **Node.js 22 or later**.
+It uses Node's built-in HTTP, cryptography and fetch APIs, plus `pg` for the
+dashboard/CRM database adapters. Install locked dependencies with
+`npm ci --prefix gateway`. Use **Node.js 22 or later**.
 
-The gateway does not connect directly to PostgreSQL or Neon. WF-A and the status
-workflow retain that responsibility. The form never receives an n8n credential.
+Form capture/status database access goes through WF-A and WF-D. The current
+gateway also connects directly to PostgreSQL for dashboard reads and CRM function
+calls when enabled. The form never receives an n8n credential.
 
 ## Configure and run
 
@@ -144,7 +151,7 @@ the status query's `submission_id` is not retained unnecessarily.
 From the project root:
 
 ```bash
-node --test tests/test_gateway.mjs
+npm test --prefix gateway
 ```
 
 These executable tests use an explicitly **fake local HTTP upstream**. They

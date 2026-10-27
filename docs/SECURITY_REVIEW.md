@@ -1,5 +1,9 @@
 # Security Review — WBS-TF-03
 
+For the broader 2026-10-27 review of public source, examples, reachable Git
+history and credential references, see [Public material security review](PUBLIC_SECURITY_REVIEW.md).
+This document remains the original dashboard review with its stated scope.
+
 WBS-TF-04 corrections and tested findings are recorded in
 [WBS_TF_04_REPORT.md](WBS_TF_04_REPORT.md). The dashboard now requires a
 separate admin key and scoped session; the table below describes the original

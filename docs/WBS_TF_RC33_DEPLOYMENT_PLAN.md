@@ -1,5 +1,11 @@
 # WBS Trade Fair Assistant — RC3.3 Deployment Plan
 
+> Historical operator proposal, preserved for review. It contains unresolved
+> code/command/credential-contract discrepancies; see SEC-01 in the
+> [public security review](PUBLIC_SECURITY_REVIEW.md). Do not execute it as a
+> student setup guide. Use [Reproduce It Yourself](REPRODUCE_IT_YOURSELF.md) for
+> independent infrastructure and [project status](PROJECT_STATUS.md) for evidence.
+
 **Scope:** prepared, **not executed.** Nothing below has been run against
 production. Every step requires explicit Owner GO at execution time.
 

@@ -1,5 +1,10 @@
 # Messe-Hub – Paket für Sergii
 
+> Historical reference package for Yuriy's environment. For the adapted RC3.3
+> implementation, read the English [workflow guide](../docs/WORKFLOW_GUIDE.md)
+> and [reproduction guide](../docs/REPRODUCE_IT_YOURSELF.md). Do not connect the
+> reference HTML to original endpoints or reuse its report addresses.
+
 Stand: 23.10.2026 · getestet auf n8n 2.40.7 (Juris Instanz)
 
 Dein Kern (WF-A, WF-B, Status, Email mit der Neon-Datenbank) bleibt das Herzstück. Dazu kommen vier kleine
