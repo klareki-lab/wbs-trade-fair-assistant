@@ -299,9 +299,53 @@
 .tools select{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:9px;font:inherit;font-size:12px;max-width:155px}
 .table-scroll tbody tr{cursor:pointer}.table-scroll tbody tr:hover{background:var(--surface-2)}
 .kat{font-weight:700}.panel pre{overflow-wrap:anywhere;white-space:pre-wrap} .detailJson{max-height:240px;overflow:auto;background:var(--surface-2);padding:10px;border-radius:8px;font-size:12px}
+.panel .hint-list{margin:4px 0 10px 18px;padding:0;font-size:13.5px}.panel .hint-list li{margin:2px 0}.panel .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:var(--muted)}
+.panel h4{margin:10px 0 6px;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.panel .notiz-inline{white-space:pre-wrap;overflow-wrap:anywhere}
+details.tech-details{margin-top:10px}details.tech-details>summary{cursor:pointer;font-size:12px;color:var(--muted)}details.tech-details[open]>summary{margin-bottom:6px}
 @media (max-width:900px){.tools{flex-wrap:wrap}.tools select{max-width:100%}}
 
 
 .bar-track meter{width:100%;height:13px;accent-color:var(--accent)} .pulse.unavailable{background:var(--err)}
 
 .pagination{display:flex;justify-content:space-between;align-items:center}
+
+/* WBS Messe-Hub FULL (issue #19) — CRM + AI additions. */
+.actionbar { display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--surface-2); border-radius: 0; }
+.actionbar .grow { flex: 1; }
+.group-card { padding: 14px 20px; border-bottom: 1px solid var(--border); }
+.group-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.group-members { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.group-members li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13.5px; }
+.group-members .row-actions { margin-left: auto; }
+.group-foot { display: flex; gap: 8px; flex-wrap: wrap; }
+.toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(13,18,32,.45); z-index: 25; }
+.modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(680px, 94vw); max-height: 86vh; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-lg); z-index: 26; }
+.modal-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.modal-head strong { flex: 1; }
+.modal-body { padding: 14px 18px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 12px; }
+.modal-foot { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; }
+.modal-foot input[type="text"] { flex: 1; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; }
+.aiPanel { border-top: 1px dashed var(--border); padding-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+.aiPanel .field { display: flex; flex-direction: column; gap: 4px; }
+.aiPanel label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.aiPanel input, .aiPanel textarea { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); font: inherit; width: 100%; box-sizing: border-box; }
+.warnings { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; }
+.chat-thread { display: flex; flex-direction: column; gap: 10px; max-height: 50vh; overflow-y: auto; }
+.msg { padding: 8px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); }
+.msg.user { background: var(--accent-soft); }
+.msg-head { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 4px; }
+.msg-body { white-space: pre-wrap; word-wrap: break-word; }
+.msg-cite { margin-top: 6px; font-size: 12px; color: var(--muted); }
+.aiPanel .field.field-invalid > input, .aiPanel .field.field-invalid > select, .aiPanel .field.field-invalid > textarea { border-color: var(--err); background: var(--err-soft); }
+.aiPanel .field-inline-error { margin: 4px 0 0; font-size: 12px; color: var(--err); }
+.aiPanel select { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); font: inherit; width: 100%; box-sizing: border-box; }
+.ai-groups { margin-top: 8px; }
+.ai-groups > summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+.ai-group { margin: 6px 0 10px; }
+.ai-group-head { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.ai-group-ids { margin: 0 0 0 18px; padding: 0; font-size: 12.5px; }
+.ai-group-ids li { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+.msg-context { font-size: 12px; color: var(--muted); margin: 0 0 4px; }
+.msg-warn { margin-top: 6px; padding: 6px 10px; border-radius: 8px; background: var(--warn-soft); color: var(--warn); font-size: 12.5px; }

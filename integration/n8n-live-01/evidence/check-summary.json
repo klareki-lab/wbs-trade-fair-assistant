@@ -1,0 +1,23 @@
+{
+  "checks": [
+    {
+      "command": "node integration/n8n-live-01/check-real.mjs; --ask-only after WF08-only change",
+      "passed": 9
+    },
+    {
+      "command": "node integration/n8n-live-01/check-e2e.mjs",
+      "passed": 11
+    },
+    {
+      "command": "node --test integration/n8n-live-01/test-adaptations.mjs tests/integration/workflow_contracts.mjs",
+      "passed": 5
+    },
+    {
+      "command": "npm test --prefix gateway",
+      "passed": 67
+    }
+  ],
+  "node": "24.15.0",
+  "fullR2Rerun": false,
+  "productionAcceptance": false
+}

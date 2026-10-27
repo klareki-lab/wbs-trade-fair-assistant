@@ -1,0 +1,107 @@
+{
+  "task": "WBS-TF-N8N-LIVE-01",
+  "observedUtc": "2026-10-26T10:26:24.711Z",
+  "releaseCandidate": "6b64f70d340c1bd9fcdefdfadcd27c35d566fd30",
+  "blackFixSha": "a9460564c54ebdc0359b65eae1f72d46111746e7",
+  "integrationCommit": "Git commit containing this manifest (self-reference excluded)",
+  "n8n": {
+    "version": "2.41.7",
+    "container": "wbs-live01-n8n",
+    "imageId": "sha256:bcef56dd44014e09774219536a3f8cb07f1b553fcba94044bd9fc0f21f8676a3",
+    "origin": "http://127.0.0.1:15679",
+    "volume": "wbs-live01-n8n-data",
+    "uiPublish": true
+  },
+  "pg": {
+    "container": "wbs-r2-test-bfadf76e",
+    "host": "127.0.0.1",
+    "port": 54732,
+    "data": "synthetic only",
+    "scope": "dedicated local PostgreSQL; NOT Neon"
+  },
+  "gateway": {
+    "origin": "http://127.0.0.1:3117",
+    "realNetworkUpstream": true,
+    "noEquivalentProxy": true
+  },
+  "workflowVersions": [
+    {
+      "id": "live01-wf07",
+      "active": true,
+      "versionId": "caf68ca6-48bf-40b4-9fa4-c9a95aa4d77b",
+      "publishedVersionId": "caf68ca6-48bf-40b4-9fa4-c9a95aa4d77b",
+      "webhookPath": "/webhook/messe-hub/ai-extract",
+      "webhookId": "72b1f1a9-ad90-463d-a14c-0585eaad7b83",
+      "noAuthHttp": 403,
+      "artifact": "wf07.json",
+      "sha256": "7969a1374a71c6e2c26dc067223c72543de763f646723d8f3f959e05648d7c35",
+      "retention": {
+        "executionOrder": "v1",
+        "saveDataErrorExecution": "none",
+        "saveDataSuccessExecution": "none",
+        "saveManualExecutions": false,
+        "saveExecutionProgress": false,
+        "executionTimeout": 30
+      }
+    },
+    {
+      "id": "live01-wf08",
+      "active": true,
+      "versionId": "4f380f13-8e34-49ef-b0bc-058d5fb99ba3",
+      "publishedVersionId": "4f380f13-8e34-49ef-b0bc-058d5fb99ba3",
+      "webhookPath": "/webhook/messe-hub/ai-ask",
+      "webhookId": "a07a8314-0ae9-49d6-8b27-14506340328f",
+      "noAuthHttp": 403,
+      "artifact": "wf08.json",
+      "sha256": "df07548b3f3c3dff411188a3d56e7d98f3a705d9098f5f7faace7de34022f31c",
+      "retention": {
+        "executionOrder": "v1",
+        "saveDataErrorExecution": "none",
+        "saveDataSuccessExecution": "none",
+        "saveManualExecutions": false,
+        "saveExecutionProgress": false,
+        "executionTimeout": 30
+      }
+    },
+    {
+      "id": "live01-wfa",
+      "active": true,
+      "versionId": "2926ba4b-fe34-4483-aad7-a84136805079",
+      "publishedVersionId": "2926ba4b-fe34-4483-aad7-a84136805079",
+      "webhookPath": "/webhook/trade-fair/lead",
+      "webhookId": "f2b6e42b-09d5-4908-8ae6-c808dfe7eb59",
+      "noAuthHttp": 403,
+      "artifact": "wfa-isolated.json",
+      "sha256": "9229d70e3c171a1e9a98a8a5c1b83993849d73d56e11fd897397306bea83f0ce",
+      "retention": {
+        "executionOrder": "v1",
+        "binaryMode": "separate",
+        "saveDataErrorExecution": "none",
+        "saveDataSuccessExecution": "none",
+        "saveManualExecutions": false,
+        "saveExecutionProgress": false
+      }
+    },
+    {
+      "id": "9vp2hqXADW2rlNsl",
+      "active": true,
+      "versionId": "e459b39e-3d95-44c1-b5ce-0da16e853ab2",
+      "publishedVersionId": "e459b39e-3d95-44c1-b5ce-0da16e853ab2",
+      "webhookPath": "/webhook/trade-fair/status",
+      "webhookId": "9da9690e-92a2-4b98-a501-fb0df465abdb",
+      "noAuthHttp": 403,
+      "artifact": "wfd-isolated.json",
+      "sha256": "1c3a19011cf382a6814e6f0167a00fe8adc13e5539c4a55ee7d80c736bca875d",
+      "retention": {
+        "executionOrder": "v1",
+        "binaryMode": "separate",
+        "saveDataErrorExecution": "none",
+        "saveDataSuccessExecution": "none",
+        "saveManualExecutions": false,
+        "saveExecutionProgress": false
+      }
+    }
+  ],
+  "productionChanges": false,
+  "releaseGate": "HOLD pending developer incorporation, independent integration review, infrastructure gates and Owner GO"
+}

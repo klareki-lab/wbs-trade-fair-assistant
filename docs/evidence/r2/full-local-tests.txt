@@ -1,0 +1,140 @@
+
+> test:r2
+> npm test && npm run test:sql && npm run test:workflows && npm run test:browser
+
+
+> test
+> node --test ../tests/*.mjs
+
+✔ default pagination bounded and stable (1.363292ms)
+✔ valid filter, pagination and sort (0.17125ms)
+✔ reject malformed query page=0 (0.305542ms)
+✔ reject malformed query page=-1 (0.08925ms)
+✔ reject malformed query page=NaN (0.074ms)
+✔ reject malformed query limit=101 (0.059334ms)
+✔ reject malformed query page=10001 (0.050584ms)
+✔ reject malformed query sort=score%3BDROP (0.263083ms)
+✔ reject malformed query band=UNKNOWN (0.130042ms)
+✔ reject malformed query email=success (0.114833ms)
+✔ reject malformed query processing=running (0.069375ms)
+✔ reject malformed query duplicate=maybe (0.053667ms)
+✔ reject malformed query direction=random (0.060875ms)
+✔ reject malformed query newflag=1 (0.045792ms)
+✔ reject malformed query page=1&page=2 (0.053792ms)
+✔ reject malformed query search=xxxxxxxxxxxxxxxxxxxxxxxxxxxx (0.952792ms)
+✔ WARM 45 and real delivery status survive contract validation (0.194541ms)
+✔ never fabricate empty results on storage failure (0.934459ms)
+✔ reject malformed PG result (0.074875ms)
+✔ reject malformed PG result (0.075916ms)
+✔ reject malformed PG result (0.033292ms)
+✔ reject malformed PG result (0.030542ms)
+✔ PG adapter uses only read-only SQL/parameters/verified TLS (0.813333ms)
+✔ idle PostgreSQL pool error does not terminate Gateway (0.23475ms)
+✔ SQL statement remains fixed and user text is bound, never interpolated (0.176584ms)
+✔ SQL migration and browser carry no write endpoint or embedded credentials (10.49525ms)
+✔ healthz is public and always answers 200 with the service tag (27.239625ms)
+✔ session endpoint reports unauthenticated by default and reflects public form flag (7.901542ms)
+✔ static form assets are served without a session (9.782875ms)
+✔ login requires same origin, correct key; logout clears cookie (8.058333ms)
+✔ capture requires session and same origin, upstream failure maps to STORAGE_UNAVAILABLE (4.22775ms)
+✔ public form routes are 404 while PUBLIC_FORM_ENABLED=false (4.117ms)
+✔ dashboard routes are inert when DASHBOARD_ENABLED is unset (2.402625ms)
+✔ status route enforces session + strict ID shape (2.249875ms)
+✔ public route disabled by default with no effect on existing form (30.932708ms)
+✔ unauthenticated dashboard read and assets rejected, original form unchanged (12.46475ms)
+✔ form access key cannot read dashboard data or assets (9.848083ms)
+✔ authenticated dashboard returns WARM 45, delivered, strict same-origin assets (8.441667ms)
+✔ backend errors return retryable 503, not empty statistics or 200 (2.732417ms)
+✔ dashboard config fails closed (0.319041ms)
+✔ anonymous browser GET /dashboard returns German login page, API clients still 401 (2.922125ms)
+✔ /dashboard-login.js served publicly without leaking keys; dashboard assets stay protected (3.119375ms)
+✔ form-user browser sees login page on /dashboard, cannot read Dashboard data (2.542083ms)
+✔ dashboard-key login grants Admin UI; logout returns to login page (3.465916ms)
+✔ wrong access key is rejected at /api/login with no cookie, login screen remains (1.718333ms)
+✔ cross-origin login attempt rejected without cookie (CSRF) (1.033542ms)
+✔ TF-12: dashboard HTML wires sidebar tabs and reset-filters button (1.61ms)
+✔ TF-19: /api/dashboard/groups rejects anonymous, form-user and cross-origin writes (2.80425ms)
+✔ TF-19: /api/dashboard/groups POST merge happy path returns success (2.153875ms)
+✔ TF-19: merge validates lead_ids and label; invalid payloads return 400/422 (3.4405ms)
+✔ TF-19: ignore/split/extract/revert routes reject unauthenticated and non-POST (4.373417ms)
+✔ TF-19: revert reversibility — revert of a merge triggers reverted_audit_id in response (1.539917ms)
+✔ TF-19: AI endpoints return 503 fail-closed when N8N_AI_* unset (2.327333ms)
+✔ TF-19: AI extract proxies to upstream and allowlists response, strips extra fields (2.5125ms)
+✔ TF-19: AI extract rejects short notes and control characters (1.780917ms)
+✔ TF-19: AI ask grounds answer and only cites valid FAIR ids; invalid upstream data → 503 (3.119375ms)
+✔ TF-19: AI upstream fail-closed on 500 and does not leak internal URL (1.503125ms)
+✔ TF-19: XSS strings from upstream never execute; served as JSON text only (1.472083ms)
+✔ TF-19: /api/session advertises crm_enabled and ai_enabled flags (3.5505ms)
+✔ TF-19: config refuses partial AI env (fail-closed) (0.194541ms)
+✔ TF-19: dashboard.js exposes CRM + AI wiring strings and no innerHTML on untrusted data (3.412ms)
+✔ TF-19: dashboard HTML exposes CRM + AI controls and no inline Yuriy artifacts (1.521708ms)
+✔ TF-12: dashboard.js wires row click, sidebar tab, reset filters, keyboard access (1.52ms)
+✔ R2: duplicate CRM IDs and unknown keys reject before DB; conflicts are HTTP 409 (2.503375ms)
+✔ R2: AI citation outside actual requested context fails closed; context must be strict (2.766583ms)
+✔ R2: AI upstream origin and TLS are constrained; CRM app rollback preserves dashboard (1.612ms)
+✔ R2: AI extraction enforces WF-A field lengths, including 10000 note and 2048 website (1.885916ms)
+ℹ tests 67
+ℹ suites 0
+ℹ pass 67
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 217.105084
+
+> test:sql
+> node --test ../tests/integration/crm_pg16.mjs
+
+PostgreSQL 16.13 confirmed DDL + original R2 UP applied
+✔ PG16: strict invalid arrays reject atomically, including duplicate, null, wrong types, missing IDs (1875.865708ms)
+✔ PG16: merge and ignore inverse preserve base leads, audit and prior state (34.912917ms)
+✔ PG16: split and extract revert restore EXACT original membership (including source group) (36.197ms)
+✔ PG16: stale merge/split/extract undo fails without any DML or audit (36.60475ms)
+✔ PG16: grouped merge/ignore conflicts leave all state unchanged (17.672834ms)
+✔ PG16: simultaneous merge/ignore, split/extract, duplicate revert serialize across real sessions (435.418542ms)
+✔ PG16: audit persists and available undo survives a new role connection (38.096375ms)
+✔ PG16: ACL denies direct tables, helper functions, PUBLIC and AI writes; scoped context omits PII (97.161875ms)
+✔ PG16: migration refuses rerun and missing Owner gate; safe DOWN retains all CRM state (160.577542ms)
+✔ PG16: extracting the only member retires source, then undo restores it; direct duplicate insert is constrained (31.577083ms)
+✔ PG16: simultaneous extracts and extract versus old merge undo have no partial writes (28.910875ms)
+✔ PG16: concurrent newer merge versus old split undo is deterministic in both transaction orders (47.539291ms)
+✔ PG16: group and audit pagination are independent and deterministic (19.590708ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3169.749042
+
+> test:workflows
+> node --test ../tests/integration/workflow_contracts.mjs ../tests/integration/n8n_local.mjs
+
+Actual n8n chains executed with scoped SQL and mock model; paid APIs not called.
+✔ isolated n8n 2.41.7: WF-07/08 actual chain, parser, scoped PostgreSQL and response envelope with mock provider (17879.868333ms)
+✔ WF-07: schema, exact evidence, null unknowns, enum rejection and WF-A limits (3.910833ms)
+✔ WF-08: bounded exact IDs, no broad snapshot, forged facts/citations and prompt injection fail closed (2.320084ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17958.55875
+
+> test:browser
+> node --test ../tests/browser/*.mjs
+
+✔ browser + real PG16: merge/extract/split/ignore, persistent audit and one-click undo after refresh/new login, XSS (5689.9455ms)
+✔ browser: AI explicit consent/field confirmation, exact WF-A contract, locked ambiguous retry after refresh uses same submission_id (1525.188791ms)
+✔ browser: 422 unlocks edits; 409 retains ID/body; assistant rejects out-of-context citation and renders strings safely (1320.376333ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9486.897

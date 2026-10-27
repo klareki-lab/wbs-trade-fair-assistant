@@ -1,0 +1,14 @@
+[rc33-backup] bringing up SOURCE PG16
+[rc33-backup] source snapshot: {"counts":{"companies":"2","contacts":"2","submissions":"5"},"dashHash":"f4c6ae5aed96ee9efceaa24323eccd5be271bc1d5b6071df5ccc2a03715fd4c7","acl":{"can_exec":true,"has_usage":true}}
+[rc33-backup] pg_dump --schema=trade_fair
+[rc33-backup] dump bytes=47263 sha256=c54189f646395224b49d9c897235f705147dbdcbf1f43547cb5bc889145132d2
+PASS — pg_dump --schema=trade_fair produced 47263 bytes (sha256=c54189f646395224…)
+[rc33-backup] bringing up DISPOSABLE TARGET PG16
+[rc33-backup] target snapshot: {"counts":{"companies":"2","contacts":"2","submissions":"5"},"dashHash":"f4c6ae5aed96ee9efceaa24323eccd5be271bc1d5b6071df5ccc2a03715fd4c7","acl":{"can_exec":true,"has_usage":true}}
+PASS — row counts identical (companies=2, contacts=2, submissions=5)
+PASS — dashboard_snapshot result sha256 identical (f4c6ae5aed96ee9e…)
+PASS — trade_fair_dashboard ACL restored (USAGE + EXECUTE)
+PASS — post-restore least-privilege preserved: trade_fair_dashboard SELECT on raw tables denied
+
+RC3.3 Phase B item 7 — backup/restore drill: ALL CHECKS PASS
+backup artifact: /var/folders/9_/72cyz03j5qz2vrw4kjj5ntvm0000gn/T/rc33-backup-1793036981962.sql (sha256=c54189f646395224b49d9c897235f705147dbdcbf1f43547cb5bc889145132d2)

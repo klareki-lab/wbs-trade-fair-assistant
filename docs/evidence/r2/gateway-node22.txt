@@ -1,0 +1,412 @@
+TAP version 13
+# Subtest: default pagination bounded and stable
+ok 1 - default pagination bounded and stable
+  ---
+  duration_ms: 4.935083
+  type: 'test'
+  ...
+# Subtest: valid filter, pagination and sort
+ok 2 - valid filter, pagination and sort
+  ---
+  duration_ms: 1.742625
+  type: 'test'
+  ...
+# Subtest: reject malformed query page=0
+ok 3 - reject malformed query page=0
+  ---
+  duration_ms: 0.901791
+  type: 'test'
+  ...
+# Subtest: reject malformed query page=-1
+ok 4 - reject malformed query page=-1
+  ---
+  duration_ms: 0.19725
+  type: 'test'
+  ...
+# Subtest: reject malformed query page=NaN
+ok 5 - reject malformed query page=NaN
+  ---
+  duration_ms: 0.243875
+  type: 'test'
+  ...
+# Subtest: reject malformed query limit=101
+ok 6 - reject malformed query limit=101
+  ---
+  duration_ms: 0.129708
+  type: 'test'
+  ...
+# Subtest: reject malformed query page=10001
+ok 7 - reject malformed query page=10001
+  ---
+  duration_ms: 0.226958
+  type: 'test'
+  ...
+# Subtest: reject malformed query sort=score%3BDROP
+ok 8 - reject malformed query sort=score%3BDROP
+  ---
+  duration_ms: 0.133667
+  type: 'test'
+  ...
+# Subtest: reject malformed query band=UNKNOWN
+ok 9 - reject malformed query band=UNKNOWN
+  ---
+  duration_ms: 0.602792
+  type: 'test'
+  ...
+# Subtest: reject malformed query email=success
+ok 10 - reject malformed query email=success
+  ---
+  duration_ms: 0.431917
+  type: 'test'
+  ...
+# Subtest: reject malformed query processing=running
+ok 11 - reject malformed query processing=running
+  ---
+  duration_ms: 0.195708
+  type: 'test'
+  ...
+# Subtest: reject malformed query duplicate=maybe
+ok 12 - reject malformed query duplicate=maybe
+  ---
+  duration_ms: 0.141208
+  type: 'test'
+  ...
+# Subtest: reject malformed query direction=random
+ok 13 - reject malformed query direction=random
+  ---
+  duration_ms: 0.103375
+  type: 'test'
+  ...
+# Subtest: reject malformed query newflag=1
+ok 14 - reject malformed query newflag=1
+  ---
+  duration_ms: 0.089625
+  type: 'test'
+  ...
+# Subtest: reject malformed query page=1&page=2
+ok 15 - reject malformed query page=1&page=2
+  ---
+  duration_ms: 0.376167
+  type: 'test'
+  ...
+# Subtest: reject malformed query search=xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ok 16 - reject malformed query search=xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  ---
+  duration_ms: 0.692125
+  type: 'test'
+  ...
+# Subtest: WARM 45 and real delivery status survive contract validation
+ok 17 - WARM 45 and real delivery status survive contract validation
+  ---
+  duration_ms: 1.03025
+  type: 'test'
+  ...
+# Subtest: never fabricate empty results on storage failure
+ok 18 - never fabricate empty results on storage failure
+  ---
+  duration_ms: 0.561416
+  type: 'test'
+  ...
+# Subtest: reject malformed PG result
+ok 19 - reject malformed PG result
+  ---
+  duration_ms: 0.254667
+  type: 'test'
+  ...
+# Subtest: reject malformed PG result
+ok 20 - reject malformed PG result
+  ---
+  duration_ms: 0.550459
+  type: 'test'
+  ...
+# Subtest: reject malformed PG result
+ok 21 - reject malformed PG result
+  ---
+  duration_ms: 0.261542
+  type: 'test'
+  ...
+# Subtest: reject malformed PG result
+ok 22 - reject malformed PG result
+  ---
+  duration_ms: 1.496667
+  type: 'test'
+  ...
+# Subtest: PG adapter uses only read-only SQL/parameters/verified TLS
+ok 23 - PG adapter uses only read-only SQL/parameters/verified TLS
+  ---
+  duration_ms: 1.230292
+  type: 'test'
+  ...
+# Subtest: idle PostgreSQL pool error does not terminate Gateway
+ok 24 - idle PostgreSQL pool error does not terminate Gateway
+  ---
+  duration_ms: 1.145792
+  type: 'test'
+  ...
+# Subtest: SQL statement remains fixed and user text is bound, never interpolated
+ok 25 - SQL statement remains fixed and user text is bound, never interpolated
+  ---
+  duration_ms: 0.453875
+  type: 'test'
+  ...
+# Subtest: Dashboard snapshot stays read-only; browser embeds no credentials or PII storage
+ok 26 - Dashboard snapshot stays read-only; browser embeds no credentials or PII storage
+  ---
+  duration_ms: 25.06625
+  type: 'test'
+  ...
+# Subtest: healthz is public and always answers 200 with the service tag
+ok 27 - healthz is public and always answers 200 with the service tag
+  ---
+  duration_ms: 30.649292
+  type: 'test'
+  ...
+# Subtest: session endpoint reports unauthenticated by default and reflects public form flag
+ok 28 - session endpoint reports unauthenticated by default and reflects public form flag
+  ---
+  duration_ms: 9.452375
+  type: 'test'
+  ...
+# Subtest: static form assets are served without a session
+ok 29 - static form assets are served without a session
+  ---
+  duration_ms: 24.889625
+  type: 'test'
+  ...
+# Subtest: login requires same origin, correct key; logout clears cookie
+ok 30 - login requires same origin, correct key; logout clears cookie
+  ---
+  duration_ms: 15.292709
+  type: 'test'
+  ...
+# Subtest: capture requires session and same origin, upstream failure maps to STORAGE_UNAVAILABLE
+ok 31 - capture requires session and same origin, upstream failure maps to STORAGE_UNAVAILABLE
+  ---
+  duration_ms: 24.450208
+  type: 'test'
+  ...
+# Subtest: public form routes are 404 while PUBLIC_FORM_ENABLED=false
+ok 32 - public form routes are 404 while PUBLIC_FORM_ENABLED=false
+  ---
+  duration_ms: 7.981083
+  type: 'test'
+  ...
+# Subtest: dashboard routes are inert when DASHBOARD_ENABLED is unset
+ok 33 - dashboard routes are inert when DASHBOARD_ENABLED is unset
+  ---
+  duration_ms: 15.08375
+  type: 'test'
+  ...
+# Subtest: status route enforces session + strict ID shape
+ok 34 - status route enforces session + strict ID shape
+  ---
+  duration_ms: 8.582417
+  type: 'test'
+  ...
+# Subtest: public route disabled by default with no effect on existing form
+ok 35 - public route disabled by default with no effect on existing form
+  ---
+  duration_ms: 38.024625
+  type: 'test'
+  ...
+# Subtest: unauthenticated dashboard read and assets rejected, original form unchanged
+ok 36 - unauthenticated dashboard read and assets rejected, original form unchanged
+  ---
+  duration_ms: 23.863166
+  type: 'test'
+  ...
+# Subtest: form access key cannot read dashboard data or assets
+ok 37 - form access key cannot read dashboard data or assets
+  ---
+  duration_ms: 26.714375
+  type: 'test'
+  ...
+# Subtest: authenticated dashboard returns WARM 45, delivered, strict same-origin assets
+ok 38 - authenticated dashboard returns WARM 45, delivered, strict same-origin assets
+  ---
+  duration_ms: 36.97725
+  type: 'test'
+  ...
+# Subtest: backend errors return retryable 503, not empty statistics or 200
+ok 39 - backend errors return retryable 503, not empty statistics or 200
+  ---
+  duration_ms: 5.497583
+  type: 'test'
+  ...
+# Subtest: dashboard config fails closed
+ok 40 - dashboard config fails closed
+  ---
+  duration_ms: 0.454208
+  type: 'test'
+  ...
+# Subtest: anonymous browser GET /dashboard returns German login page, API clients still 401
+ok 41 - anonymous browser GET /dashboard returns German login page, API clients still 401
+  ---
+  duration_ms: 6.747125
+  type: 'test'
+  ...
+# Subtest: /dashboard-login.js served publicly without leaking keys; dashboard assets stay protected
+ok 42 - /dashboard-login.js served publicly without leaking keys; dashboard assets stay protected
+  ---
+  duration_ms: 6.846667
+  type: 'test'
+  ...
+# Subtest: form-user browser sees login page on /dashboard, cannot read Dashboard data
+ok 43 - form-user browser sees login page on /dashboard, cannot read Dashboard data
+  ---
+  duration_ms: 8.262917
+  type: 'test'
+  ...
+# Subtest: dashboard-key login grants Admin UI; logout returns to login page
+ok 44 - dashboard-key login grants Admin UI; logout returns to login page
+  ---
+  duration_ms: 10.257292
+  type: 'test'
+  ...
+# Subtest: wrong access key is rejected at /api/login with no cookie, login screen remains
+ok 45 - wrong access key is rejected at /api/login with no cookie, login screen remains
+  ---
+  duration_ms: 3.139542
+  type: 'test'
+  ...
+# Subtest: cross-origin login attempt rejected without cookie (CSRF)
+ok 46 - cross-origin login attempt rejected without cookie (CSRF)
+  ---
+  duration_ms: 1.753708
+  type: 'test'
+  ...
+# Subtest: TF-12: dashboard HTML wires sidebar tabs and reset-filters button
+ok 47 - TF-12: dashboard HTML wires sidebar tabs and reset-filters button
+  ---
+  duration_ms: 3.220125
+  type: 'test'
+  ...
+# Subtest: TF-19: /api/dashboard/groups rejects anonymous, form-user and cross-origin writes
+ok 48 - TF-19: /api/dashboard/groups rejects anonymous, form-user and cross-origin writes
+  ---
+  duration_ms: 5.306125
+  type: 'test'
+  ...
+# Subtest: TF-19: /api/dashboard/groups POST merge happy path returns success
+ok 49 - TF-19: /api/dashboard/groups POST merge happy path returns success
+  ---
+  duration_ms: 3.307625
+  type: 'test'
+  ...
+# Subtest: TF-19: merge validates lead_ids and label; invalid payloads return 400/422
+ok 50 - TF-19: merge validates lead_ids and label; invalid payloads return 400/422
+  ---
+  duration_ms: 6.132959
+  type: 'test'
+  ...
+# Subtest: TF-19: ignore/split/extract/revert routes reject unauthenticated and non-POST
+ok 51 - TF-19: ignore/split/extract/revert routes reject unauthenticated and non-POST
+  ---
+  duration_ms: 8.092833
+  type: 'test'
+  ...
+# Subtest: TF-19: revert reversibility — revert of a merge triggers reverted_audit_id in response
+ok 52 - TF-19: revert reversibility — revert of a merge triggers reverted_audit_id in response
+  ---
+  duration_ms: 3.058958
+  type: 'test'
+  ...
+# Subtest: TF-19: AI endpoints return 503 fail-closed when N8N_AI_* unset
+ok 53 - TF-19: AI endpoints return 503 fail-closed when N8N_AI_* unset
+  ---
+  duration_ms: 3.163875
+  type: 'test'
+  ...
+# Subtest: TF-19: AI extract proxies to upstream and allowlists response, strips extra fields
+ok 54 - TF-19: AI extract proxies to upstream and allowlists response, strips extra fields
+  ---
+  duration_ms: 5.23125
+  type: 'test'
+  ...
+# Subtest: TF-19: AI extract rejects short notes and control characters
+ok 55 - TF-19: AI extract rejects short notes and control characters
+  ---
+  duration_ms: 5.158042
+  type: 'test'
+  ...
+# Subtest: TF-19: AI ask grounds answer and only cites valid FAIR ids; invalid upstream data → 503
+ok 56 - TF-19: AI ask grounds answer and only cites valid FAIR ids; invalid upstream data → 503
+  ---
+  duration_ms: 6.055709
+  type: 'test'
+  ...
+# Subtest: TF-19: AI upstream fail-closed on 500 and does not leak internal URL
+ok 57 - TF-19: AI upstream fail-closed on 500 and does not leak internal URL
+  ---
+  duration_ms: 3.288
+  type: 'test'
+  ...
+# Subtest: TF-19: XSS strings from upstream never execute; served as JSON text only
+ok 58 - TF-19: XSS strings from upstream never execute; served as JSON text only
+  ---
+  duration_ms: 3.354625
+  type: 'test'
+  ...
+# Subtest: TF-19: /api/session advertises crm_enabled and ai_enabled flags
+ok 59 - TF-19: /api/session advertises crm_enabled and ai_enabled flags
+  ---
+  duration_ms: 2.54025
+  type: 'test'
+  ...
+# Subtest: TF-19: config refuses partial AI env (fail-closed)
+ok 60 - TF-19: config refuses partial AI env (fail-closed)
+  ---
+  duration_ms: 0.25075
+  type: 'test'
+  ...
+# Subtest: TF-19: dashboard.js exposes CRM + AI wiring strings and no innerHTML on untrusted data
+ok 61 - TF-19: dashboard.js exposes CRM + AI wiring strings and no innerHTML on untrusted data
+  ---
+  duration_ms: 5.645208
+  type: 'test'
+  ...
+# Subtest: TF-19: dashboard HTML exposes CRM + AI controls and no inline Yuriy artifacts
+ok 62 - TF-19: dashboard HTML exposes CRM + AI controls and no inline Yuriy artifacts
+  ---
+  duration_ms: 6.357584
+  type: 'test'
+  ...
+# Subtest: TF-12: dashboard.js wires row click, sidebar tab, reset filters, keyboard access
+ok 63 - TF-12: dashboard.js wires row click, sidebar tab, reset filters, keyboard access
+  ---
+  duration_ms: 7.20825
+  type: 'test'
+  ...
+# Subtest: R2: duplicate CRM IDs and unknown keys reject before DB; conflicts are HTTP 409
+ok 64 - R2: duplicate CRM IDs and unknown keys reject before DB; conflicts are HTTP 409
+  ---
+  duration_ms: 9.679875
+  type: 'test'
+  ...
+# Subtest: R2: AI citation outside actual requested context fails closed; context must be strict
+ok 65 - R2: AI citation outside actual requested context fails closed; context must be strict
+  ---
+  duration_ms: 7.58725
+  type: 'test'
+  ...
+# Subtest: R2: AI upstream origin and TLS are constrained; CRM app rollback preserves dashboard
+ok 66 - R2: AI upstream origin and TLS are constrained; CRM app rollback preserves dashboard
+  ---
+  duration_ms: 4.378416
+  type: 'test'
+  ...
+# Subtest: R2: AI extraction enforces WF-A field lengths, including 10000 note and 2048 website
+ok 67 - R2: AI extraction enforces WF-A field lengths, including 10000 note and 2048 website
+  ---
+  duration_ms: 7.972542
+  type: 'test'
+  ...
+1..67
+# tests 67
+# suites 0
+# pass 67
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 427.122459
